@@ -100,13 +100,6 @@ collision-avoidance/
 ├── data/
 │   └── config.py                   # Simulation configuration constants
 │
-├── paper/
-│   ├── short-version.tex           # ← Main paper source (TCST submission)
-│   ├── short-version.pdf           # Compiled PDF
-│   ├── IEEEtran.bst                # BibTeX style
-│   ├── references.bib              # Bibliography
-│   └── figures/                    # All paper figures (PNG + EPS)
-│
 ├── gifs_paper/                     # Animated GIFs (5 controllers × 4 scenarios)
 │
 ├── run_mc_5way.py                  # 5-way Monte Carlo (50 trials × 4 scenarios)
@@ -253,11 +246,5 @@ All baselines share the same USV dynamics, autopilot, simulation engine, and goa
 ## Citation
 
 ```bibtex
-@article{ccbf_tcst2026,
-  title   = {{CC-CBF}: Compliant-Course Control Barrier Function
-             for {USV} Collision Avoidance},
-  author  = {Din, Muhayy Ud and Akram, Waseem and Bakht, Ahsan B. and others},
-  journal = {IEEE Transactions on Control Systems Technology},
-  year    = {2026},
-}
+comming soon
 ```
