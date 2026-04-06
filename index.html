@@ -10,13 +10,13 @@
     html { scroll-behavior: smooth; }
     body {
       font-family: "Segoe UI", system-ui, sans-serif;
-      background: #0b0f1a;
-      color: #e2e8f0;
+      background: #ffffff;
+      color: #1e293b;
       line-height: 1.7;
     }
 
     /* ── Utility ──────────────────────────────────────────── */
-    a { color: #60a5fa; text-decoration: none; }
+    a { color: #2563eb; text-decoration: none; }
     a:hover { text-decoration: underline; }
     .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
     .badge {
@@ -32,7 +32,7 @@
     .badge-amber  { background: #b45309; color: #fff; }
     .badge-purple { background: #6d28d9; color: #fff; }
 
-    /* ── Hero ─────────────────────────────────────────────── */
+    /* ── Hero (stays dark) ────────────────────────────────── */
     .hero {
       background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #0f2744 100%);
       padding: 5rem 1.5rem 3.5rem;
@@ -73,6 +73,23 @@
     .btn-outline { background: transparent; color: #cbd5e1; border: 1.5px solid #334155; }
     .btn-dark    { background: #1e293b; color: #cbd5e1; }
 
+    /* ── Hero authors ─────────────────────────────────────── */
+    .hero-authors {
+      font-size: 1rem;
+      color: #cbd5e1;
+      margin: .9rem 0 .3rem;
+      line-height: 1.6;
+    }
+    .hero-authors .author-name { font-weight: 600; }
+    .hero-authors sup { font-size: .7em; color: #60a5fa; }
+    .hero-affiliations {
+      font-size: .82rem;
+      color: #64748b;
+      margin-bottom: 1.6rem;
+      line-height: 1.6;
+    }
+    .hero-affiliations sup { font-size: .7em; color: #60a5fa; }
+
     /* ── Hero GIF strip ───────────────────────────────────── */
     .hero-gifs {
       display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap;
@@ -86,20 +103,21 @@
     }
     .hero-gifs img:hover { transform: scale(1.04); }
 
-    /* ── Sections ─────────────────────────────────────────── */
+    /* ── Sections (light) ─────────────────────────────────── */
     section { padding: 4rem 0; }
-    section + section { border-top: 1px solid #1e293b; }
+    section + section { border-top: 1px solid #e2e8f0; }
     .section-label {
       font-size: .8rem; font-weight: 700; letter-spacing: .12em;
-      text-transform: uppercase; color: #60a5fa; margin-bottom: .6rem;
+      text-transform: uppercase; color: #2563eb; margin-bottom: .6rem;
     }
     h2 {
       font-size: clamp(1.4rem, 2.5vw, 2rem);
-      font-weight: 700; color: #f1f5f9;
+      font-weight: 700; color: #0f172a;
       margin-bottom: 1rem;
     }
-    p { color: #94a3b8; margin-bottom: 1rem; }
-    p strong { color: #e2e8f0; }
+    h3 { color: #0f172a; }
+    p { color: #475569; margin-bottom: 1rem; }
+    p strong { color: #0f172a; }
 
     /* ── Insight cards ────────────────────────────────────── */
     .cards {
@@ -108,23 +126,23 @@
       gap: 1.25rem; margin-top: 2rem;
     }
     .card {
-      background: #111827;
-      border: 1px solid #1e293b;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       border-radius: .75rem;
       padding: 1.5rem;
       transition: border-color .2s;
     }
     .card:hover { border-color: #2563eb; }
     .card-icon { font-size: 1.8rem; margin-bottom: .75rem; }
-    .card h3 { font-size: 1rem; font-weight: 700; color: #f1f5f9; margin-bottom: .4rem; }
+    .card h3 { font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: .4rem; }
     .card p  { font-size: .9rem; color: #64748b; margin: 0; }
 
     /* ── Scenario tabs ────────────────────────────────────── */
     .tabs { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
     .tab-btn {
       padding: .45rem 1.1rem; border-radius: .4rem;
-      border: 1.5px solid #334155; background: transparent;
-      color: #94a3b8; font-size: .9rem; font-weight: 600;
+      border: 1.5px solid #cbd5e1; background: transparent;
+      color: #64748b; font-size: .9rem; font-weight: 600;
       cursor: pointer; transition: all .15s;
     }
     .tab-btn.active, .tab-btn:hover {
@@ -139,8 +157,8 @@
       gap: 1rem;
     }
     .gif-card {
-      background: #111827;
-      border: 1px solid #1e293b;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       border-radius: .6rem; overflow: hidden;
       text-align: center;
       transition: border-color .2s, transform .2s;
@@ -150,15 +168,15 @@
     .gif-label {
       padding: .55rem .5rem;
       font-size: .8rem; font-weight: 700;
-      color: #e2e8f0;
+      color: #0f172a;
     }
     .gif-meta {
       padding: 0 .5rem .55rem;
       font-size: .75rem; color: #64748b;
     }
-    .ok   { color: #4ade80; }
-    .warn { color: #facc15; }
-    .bad  { color: #f87171; }
+    .ok   { color: #16a34a; }
+    .warn { color: #d97706; }
+    .bad  { color: #dc2626; }
 
     /* ── Results table ────────────────────────────────────── */
     .results-wrap { overflow-x: auto; margin-top: 1.5rem; }
@@ -166,17 +184,17 @@
       width: 100%; border-collapse: collapse;
       font-size: .92rem;
     }
-    thead tr { background: #1e293b; }
+    thead tr { background: #f1f5f9; }
     th {
       padding: .75rem 1rem; text-align: left;
       font-size: .8rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: .05em;
-      color: #60a5fa;
+      color: #2563eb;
     }
-    td { padding: .7rem 1rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
-    tbody tr:hover { background: #111827; }
-    tbody tr.highlight td { color: #f1f5f9; font-weight: 700; }
-    .best { color: #4ade80; }
+    td { padding: .7rem 1rem; border-bottom: 1px solid #e2e8f0; color: #334155; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody tr.highlight td { color: #0f172a; font-weight: 700; }
+    .best { color: #16a34a; }
 
     /* ── Figure grid ──────────────────────────────────────── */
     .fig-grid {
@@ -185,8 +203,8 @@
       gap: 1.25rem; margin-top: 1.5rem;
     }
     .fig-card {
-      background: #111827;
-      border: 1px solid #1e293b;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       border-radius: .75rem; overflow: hidden;
     }
     .fig-card img { width: 100%; display: block; }
@@ -197,8 +215,8 @@
 
     /* ── Code block ───────────────────────────────────────── */
     .code-block {
-      background: #111827;
-      border: 1px solid #1e293b;
+      background: #1e293b;
+      border: 1px solid #334155;
       border-radius: .6rem;
       padding: 1.25rem 1.5rem;
       font-family: "Fira Code", "Cascadia Code", monospace;
@@ -209,11 +227,161 @@
     }
     .code-block .comment { color: #4b5563; }
 
+    /* ── Framework figures ────────────────────────────────── */
+    .framework-intro {
+      text-align: justify;
+      color: #475569;
+      margin-bottom: 2rem;
+    }
+    .fw-block {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: center;
+      margin-bottom: 3rem;
+    }
+    .fw-block.reverse { direction: rtl; }
+    .fw-block.reverse > * { direction: ltr; }
+    @media (max-width: 700px) {
+      .fw-block, .fw-block.reverse { grid-template-columns: 1fr; direction: ltr; }
+    }
+    .fw-img {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: .75rem;
+      overflow: hidden;
+    }
+    .fw-img img { width: 100%; display: block; }
+    .fw-text h3 {
+      font-size: 1.1rem; font-weight: 700; color: #0f172a;
+      margin-bottom: .6rem;
+    }
+    .fw-text p { font-size: .93rem; color: #475569; text-align: justify; margin-bottom: .6rem; }
+    .fw-text .fw-tag {
+      display: inline-block;
+      padding: .2rem .65rem;
+      border-radius: 9999px;
+      font-size: .72rem; font-weight: 700;
+      background: #dbeafe; color: #1d4ed8;
+      margin-bottom: .8rem;
+    }
+    .traj-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1rem;
+    }
+    .traj-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: .75rem;
+      overflow: hidden;
+      transition: border-color .2s, transform .2s;
+    }
+    .traj-card:hover { border-color: #2563eb; transform: translateY(-3px); }
+    .traj-card img { width: 100%; display: block; }
+    .traj-caption {
+      padding: .65rem .85rem;
+      font-size: .8rem; font-weight: 700; color: #0f172a;
+    }
+    .traj-sub {
+      padding: 0 .85rem .65rem;
+      font-size: .75rem; color: #64748b;
+    }
+
+    /* ── Coming Soon modal (stays dark) ──────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #111827;
+      border: 1px solid #1e3a5f;
+      border-radius: 1rem;
+      padding: 3rem 2.5rem;
+      text-align: center;
+      max-width: 420px; width: 90%;
+      box-shadow: 0 24px 64px #000a;
+      animation: popIn .2s ease;
+    }
+    @keyframes popIn {
+      from { transform: scale(.92); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    .modal-box .modal-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .modal-box h3 { font-size: 1.4rem; font-weight: 800; color: #f1f5f9; margin-bottom: .5rem; }
+    .modal-box p  { font-size: .95rem; color: #64748b; margin-bottom: 1.5rem; }
+    .modal-close {
+      padding: .55rem 1.4rem;
+      border-radius: .5rem;
+      background: #1d4ed8; color: #fff;
+      border: none; font-size: .95rem; font-weight: 600;
+      cursor: pointer; transition: filter .15s;
+    }
+    .modal-close:hover { filter: brightness(1.2); }
+
+    /* ── Video grid ───────────────────────────────────────── */
+    .video-section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    .video-group-label {
+      font-size: .75rem; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: #2563eb;
+      margin-bottom: .75rem;
+    }
+    .video-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: .75rem;
+      overflow: hidden;
+      transition: border-color .2s, transform .2s;
+    }
+    .video-card:hover { border-color: #2563eb; transform: translateY(-3px); }
+    .video-card video {
+      width: 100%;
+      display: block;
+      max-height: 280px;
+      object-fit: cover;
+      background: #000;
+    }
+    .video-card-body { padding: .85rem 1rem; }
+    .video-card-title {
+      font-size: .95rem; font-weight: 700; color: #0f172a;
+      margin-bottom: .3rem;
+    }
+    .video-card-desc {
+      font-size: .82rem; color: #64748b; margin: 0;
+    }
+    .video-col-header {
+      display: flex; align-items: center; gap: .6rem;
+      margin-bottom: 1rem;
+    }
+    .video-col-header span {
+      font-size: 1rem; font-weight: 700; color: #0f172a;
+    }
+    .env-badge {
+      display: inline-block;
+      padding: .2rem .65rem;
+      border-radius: 9999px;
+      font-size: .72rem; font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .env-real { background: #dcfce7; color: #15803d; }
+    .env-sim  { background: #dbeafe; color: #1d4ed8; }
+
     /* ── Footer ───────────────────────────────────────────── */
     footer {
       text-align: center; padding: 2.5rem 1rem;
-      font-size: .85rem; color: #374151;
-      border-top: 1px solid #1e293b;
+      font-size: .85rem; color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
     }
   </style>
 </head>
@@ -221,24 +389,38 @@
 
 <!-- ═══════════════════════════════════════════════════════ HERO -->
 <header class="hero">
-  <div class="hero-venue">IEEE Transactions on Control Systems Technology · 2026</div>
+  <div class="hero-venue">Submitted to IEEE Transactions on Control Systems Technology · 2026</div>
   <h1>
     <span>CC-CBF</span>: Compliant-Course Control Barrier Function<br>
     for USV Collision Avoidance
   </h1>
+
+  <div class="hero-authors">
+    <span class="author-name">Muhayy Ud Din</span><sup>1</sup>,&ensp;
+    <span class="author-name">Waseem Akram</span><sup>1</sup>,&ensp;
+    <span class="author-name">Ahsan B. Bakht</span><sup>1</sup>,&ensp;
+    <span class="author-name">Tarek Taha</span><sup>2</sup>,&ensp;
+    <span class="author-name">Irfan Hussain</span><sup>1*</sup>
+  </div>
+  <div class="hero-affiliations">
+    <sup>1</sup> Khalifa University Center for Autonomous Robotic Systems (KUCARS), Khalifa University, Abu Dhabi, UAE<br>
+    <sup>2</sup> Dubai Future Labs, Dubai, UAE
+  </div>
+
   <p class="hero-sub">
     A single asymmetric barrier function that simultaneously guarantees collision safety
-    <em>and</em> COLREG-compliant manoeuvring — no rule lookup tables, no mode switching.
+    <em>and</em> COLREG-compliant manoeuvring, no rule lookup tables, no mode switching.
   </p>
 
   <div class="hero-buttons">
-    <a class="btn btn-primary" href="paper/short-version.pdf">📄 Paper (PDF)</a>
-    <a class="btn btn-dark"    href="https://github.com/muhayy/cc-cbf">
+    <a class="btn btn-primary" href="#" onclick="openComingSoon(event)">📄 Paper (PDF)</a>
+    <a class="btn btn-dark"    href="https://github.com/Muhayyuddin/cc-cbf" target="_blank" rel="noopener">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       GitHub
     </a>
     <a class="btn btn-outline" href="#results">Results</a>
     <a class="btn btn-outline" href="#demos">Demos</a>
+    <a class="btn btn-outline" href="#experiments">🎬 Real Experiments</a>
   </div>
 
   <!-- 4 flagship CC-CBF GIFs -->
@@ -256,55 +438,123 @@
 <section>
   <div class="container">
     <div class="section-label">The Idea</div>
-    <h2>What does CC-CBF actually do?</h2>
+    <h2>Overview</h2>
 
-    <p>
+    <p style="text-align: justify;">
       When two ships approach each other at sea, maritime law (COLREG) specifies exactly
       <strong>which side</strong> each vessel must manoeuvre to. For example, in a head-on
-      encounter both ships must turn <strong>to starboard (right)</strong> — never to port.
+      encounter both ships must turn <strong>to starboard (right)</strong> never to port.
       Most autonomous collision avoidance systems either avoid in any convenient direction,
       ignoring the rules, or follow rigid hand-coded rule tables that break down in ambiguous
       or multi-vessel situations.
-    </p>
-
-    <p>
       <strong>CC-CBF takes a different approach.</strong> Instead of checking a rule table
       and then applying a safety filter, it <em>shapes the danger zone itself</em> to be
       directionally asymmetric. The forbidden region around each obstacle is inflated on the
       COLREG-prohibited side and left narrow on the compliant side. A tiny quadratic program
       (QP) running at 20 Hz continuously projects the vessel's desired velocity onto the
-      safe, legal side — so the <strong>right manoeuvre emerges automatically from
+      safe, legal side, so the <strong>right manoeuvre emerges automatically from
       geometry</strong>, not from rules.
-    </p>
-
-    <p>
       The key insight: if you make the barrier bigger on the wrong side, the solver's
-      minimum-effort solution naturally steers away from it — directly toward the
-      COLREG-compliant direction — without ever needing to "know" the rule.
+      minimum-effort solution naturally steers away from it directly toward the
+      COLREG-compliant direction without ever needing to "know" the rule.
     </p>
 
-    <div class="cards">
-      <div class="card">
-        <div class="card-icon">🛡️</div>
-        <h3>One barrier, two guarantees</h3>
-        <p>A single asymmetric CBF simultaneously enforces collision safety <em>and</em> directional COLREG compliance.</p>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════ REAL-WORLD & SIMULATOR VIDEOS -->
+<section id="experiments">
+  <div class="container">
+    <div class="section-label">Real-World &amp; Simulator Experiments</div>
+    <h2>Validation on Physical USVs &amp; MBZIRC Simulator</h2>
+    <p>
+      CC-CBF was validated beyond simulation: the algorithm was deployed on a real unmanned
+      surface vessel and tested in the <strong>MBZIRC maritime simulator</strong>. Both
+      head-on (Rule 14) and overtaking (Rule 13) encounters are demonstrated, confirming that
+      the same controller generalises from simulation to physical hardware without
+      re-tuning.
+    </p>
+
+    <!-- ── Real-world videos ── -->
+    <h3 style="color:#0f172a; margin: 2rem 0 .5rem; font-size:1.15rem;">
+      � Real USV Deployment
+    </h3>
+    <div class="video-section-grid">
+
+      <div class="video-card">
+        <video autoplay muted loop playsinline>
+          <source src="videos/headson_real" type="video/mp4">
+          Your browser does not support HTML5 video.
+        </video>
+        <div class="video-card-body">
+          <div class="video-card-title">
+            Head-On &nbsp;<span class="env-badge env-real">� Real World</span>
+          </div>
+          <p class="video-card-desc">
+            CC-CBF deployed on a physical unmanned surface vessel. Both vessels perform
+            a compliant starboard turn and resume their original courses after clearing.
+          </p>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-icon">🧭</div>
-        <h3>No rule tables needed</h3>
-        <p>The correct manoeuvre direction emerges directly from the barrier geometry — no lookup, no mode switching.</p>
+
+      <div class="video-card">
+        <video autoplay muted loop playsinline>
+          <source src="videos/overtacking_real" type="video/mp4">
+          Your browser does not support HTML5 video.
+        </video>
+        <div class="video-card-body">
+          <div class="video-card-title">
+            Overtaking &nbsp;<span class="env-badge env-real">� Real World</span>
+          </div>
+          <p class="video-card-desc">
+            Physical USV overtakes a slower vessel to starboard in compliance with
+            COLREG Rule 13, then rejoins its nominal waypoint track.
+          </p>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-icon">⚡</div>
-        <h3>Real-time capable</h3>
-        <p>The O(n) QP solver runs in under 0.5 ms per step — well inside the 50 ms budget at 20 Hz.</p>
+
+    </div><!-- /real-world grid -->
+
+    <!-- ── Simulator videos ── -->
+    <h3 style="color:#0f172a; margin: 2.5rem 0 .5rem; font-size:1.15rem;">
+      �️ MBZIRC Simulator
+    </h3>
+    <div class="video-section-grid">
+
+      <div class="video-card">
+        <video autoplay muted loop playsinline>
+          <source src="videos/headson.mp4" type="video/mp4">
+          Your browser does not support HTML5 video.
+        </video>
+        <div class="video-card-body">
+          <div class="video-card-title">
+            Head-On &nbsp;<span class="env-badge env-sim">�️ Simulator</span>
+          </div>
+          <p class="video-card-desc">
+            Head-on encounter (Rule 14) in the MBZIRC maritime simulator. Both vessels
+            turn to starboard — compliant behaviour emerges directly from the barrier geometry.
+          </p>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-icon">🚢</div>
-        <h3>Multi-vessel ready</h3>
-        <p>One linear constraint per obstacle stacks trivially: the same QP handles any number of simultaneous encounters.</p>
+
+      <div class="video-card">
+        <video autoplay muted loop playsinline>
+          <source src="videos/overtacking.mp4" type="video/mp4">
+          Your browser does not support HTML5 video.
+        </video>
+        <div class="video-card-body">
+          <div class="video-card-title">
+            Overtaking &nbsp;<span class="env-badge env-sim">�️ Simulator</span>
+          </div>
+          <p class="video-card-desc">
+            Overtaking scenario (Rule 13) in the MBZIRC simulator. The overtaking vessel
+            passes to starboard of the slower vessel without any explicit rule look-up.
+          </p>
+        </div>
       </div>
-    </div>
+
+    </div><!-- /simulator grid -->
   </div>
 </section>
 
@@ -320,7 +570,6 @@
       <button class="tab-btn" onclick="showTab('crossing',this)">Crossing · Rule 15</button>
       <button class="tab-btn" onclick="showTab('overtaking',this)">Overtaking · Rule 13</button>
       <button class="tab-btn" onclick="showTab('static',this)">Static Obstacles</button>
-      <button class="tab-btn" onclick="showTab('multi',this)">Multi-Vessel</button>
     </div>
 
     <!-- Head-On -->
@@ -451,10 +700,10 @@
       </div>
     </div>
 
-    <!-- Multi-vessel -->
-    <div class="tab-panel" id="tab-multi">
+    <!-- Multi-Vessel — always visible below tabs -->
+    <div style="margin-top: 2.5rem; border-top: 1px solid #e2e8f0; padding-top: 2rem;">
       <p><strong>Multi-Vessel Stress Tests:</strong> CC-CBF extends naturally to simultaneous encounters — one QP constraint per obstacle, no combinatorial rule logic required.</p>
-      <div class="gif-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px,1fr));">
+      <div class="gif-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); margin-top: 1rem;">
         <div class="gif-card">
           <img src="gifs_paper/multi_parallel_head_on.gif" alt="Parallel head-on">
           <div class="gif-label">Parallel Head-On</div>
@@ -472,6 +721,7 @@
         </div>
       </div>
     </div>
+
   </div>
 </section>
 
@@ -538,35 +788,6 @@
       and achieves the highest COLREG compliance. C3BF also avoids collisions but at the cost of
       nearly zero directional compliance (0.38).
     </p>
-
-    <!-- Paper figures -->
-    <h2 style="margin-top:3rem;">Paper Figures</h2>
-    <div class="fig-grid">
-      <div class="fig-card">
-        <img src="paper/figures/traj_all_scenarios.png" alt="Trajectory comparison">
-        <div class="fig-caption">Deterministic trajectories (seed 42) for all 5 controllers across the 4 COLREG scenarios.</div>
-      </div>
-      <div class="fig-card">
-        <img src="paper/figures/bar_metrics.png" alt="Bar metrics">
-        <div class="fig-caption">COLREG compliance and minimum separation across controllers and scenarios.</div>
-      </div>
-      <div class="fig-card">
-        <img src="paper/figures/barrier_shape.png" alt="Barrier shape">
-        <div class="fig-caption">Polar plot of the CC-CBF directional barrier radius R_CC(θ) for each encounter type.</div>
-      </div>
-      <div class="fig-card">
-        <img src="paper/figures/mc_line_stddev.png" alt="MC line plot">
-        <div class="fig-caption">Monte Carlo mean ± 1σ band for minimum separation across 50 trials per controller.</div>
-      </div>
-      <div class="fig-card">
-        <img src="paper/figures/radar_summary.png" alt="Radar summary">
-        <div class="fig-caption">Radar chart summarising all five performance metrics across controllers.</div>
-      </div>
-      <div class="fig-card">
-        <img src="paper/figures/computation_time.png" alt="Computation time">
-        <div class="fig-caption">Per-step computation time. CC-CBF averages &lt;0.5 ms, well within 50 ms @ 20 Hz.</div>
-      </div>
-    </div>
   </div>
 </section>
 
@@ -578,7 +799,7 @@
     <p>Clone, install, and run all planners in under a minute:</p>
     <div class="code-block">
 <span class="comment"># Install</span>
-git clone https://github.com/muhayy/cc-cbf
+git clone https://github.com/Muhayyuddin/cc-cbf
 cd cc-cbf
 python -m venv venv &amp;&amp; source venv/bin/activate
 pip install -r requirements.txt
@@ -601,34 +822,39 @@ python generate_paper_gifs.py
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════════ CITATION -->
-<section>
-  <div class="container">
-    <div class="section-label">Citation</div>
-    <h2>Cite this Work</h2>
-    <div class="code-block" style="color:#e2e8f0;">
-@article{ccbf_tcst2026,
-  title   = {{CC-CBF}: Compliant-Course Control Barrier Function
-             for {USV} Collision Avoidance},
-  author  = {Din, Muhayy Ud and Akram, Waseem and Bakht, Ahsan B. and others},
-  journal = {IEEE Transactions on Control Systems Technology},
-  year    = {2026},
-}
-    </div>
-  </div>
-</section>
-
 </main>
 
 <footer>
   <div class="container">
-    CC-CBF · IEEE TCST 2026 · 
-    <a href="paper/short-version.pdf">Paper</a> ·
-    <a href="https://github.com/muhayy/cc-cbf">GitHub</a>
+    CC-CBF · Submitted to IEEE TCST 2026 · 
+    <a href="#" onclick="openComingSoon(event)">Paper</a> ·
+    <a href="https://github.com/Muhayyuddin/cc-cbf" target="_blank" rel="noopener">GitHub</a>
   </div>
 </footer>
 
+<!-- ── Coming Soon modal ── -->
+<div class="modal-overlay" id="comingSoonModal" onclick="closeComingSoon(event)">
+  <div class="modal-box">
+    <div class="modal-icon">📄</div>
+    <h3>Coming Soon</h3>
+    <p>The paper is currently under review.<br>It will be available here once published.</p>
+    <button class="modal-close" onclick="document.getElementById('comingSoonModal').classList.remove('open')">Got it</button>
+  </div>
+</div>
+
 <script>
+  function openComingSoon(e) {
+    e.preventDefault();
+    document.getElementById('comingSoonModal').classList.add('open');
+  }
+  function closeComingSoon(e) {
+    if (e.target === document.getElementById('comingSoonModal'))
+      document.getElementById('comingSoonModal').classList.remove('open');
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.getElementById('comingSoonModal').classList.remove('open');
+  });
+
   function showTab(name, btn) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

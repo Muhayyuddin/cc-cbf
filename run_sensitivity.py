@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-λ-sensitivity study for the CC-CBF paper — CORRECTED FRAMING
+λ-sensitivity study for the CC-CBF paper
 =============================================================
 
 What λ actually controls
