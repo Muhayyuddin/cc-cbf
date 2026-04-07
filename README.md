@@ -1,11 +1,11 @@
 # CC-CBF: Compliant-Course Control Barrier Function for COLREG-Aware USV Collision Avoidance
 
 > **"CC-CBF: Compliant-Course Control Barrier Function for USV Collision Avoidance"**  
-> *IEEE Transactions on Control Systems Technology (TCST), 2026*
+> *submitted to IEEE Transactions on Control Systems Technology (TCST), 2026*
 
 ---
 
-## What does this do? (plain English)
+## Overview
 
 Imagine two ships approaching each other at sea. Maritime law (COLREG) has strict rules about *which side* each vessel must manoeuvre to — for example, in a head-on situation both ships must turn **to starboard (right)**, never to port. Most autonomous collision avoidance systems either just try to avoid a collision *somehow* (without caring about direction), or follow rigid hand-coded rules that can fail in ambiguous or multi-vessel situations.
 
@@ -47,7 +47,32 @@ The key insight is that by inflating the barrier radius on the prohibited side, 
 
 ---
 
-## Overview
+## Real-World & Simulator Validation
+
+The same CC-CBF controller — without any re-tuning — was deployed on a physical MBZIRC USV and tested in the MBZIRC maritime simulator.
+
+### 🚢 Real USV Deployment
+
+**Head-On (Rule 14)**
+
+https://github.com/Muhayyuddin/cc-cbf/raw/main/videos/headson_real
+
+**Overtaking (Rule 13)**
+
+https://github.com/Muhayyuddin/cc-cbf/raw/main/videos/overtacking_real
+
+### 🖥️ MBZIRC Simulator
+
+**Head-On (Rule 14)**
+
+https://github.com/Muhayyuddin/cc-cbf/raw/main/videos/headson.mp4
+
+**Overtaking (Rule 13)**
+
+https://github.com/Muhayyuddin/cc-cbf/raw/main/videos/overtacking.mp4
+
+---
+
 
 **CC-CBF** encodes both **safety** (minimum separation) and **COLREG compliance** (maritime right-of-way rules) in a single directionally asymmetric barrier function per obstacle. The encounter type (head-on, crossing, overtaking) is embedded directly into the barrier radius via cosine modulation, so the QP always projects the nominal velocity onto the COLREG-compliant side — no external rule-switching logic required.
 
