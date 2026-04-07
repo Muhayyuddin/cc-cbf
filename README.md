@@ -47,32 +47,6 @@ The key insight is that by inflating the barrier radius on the prohibited side, 
 
 ---
 
-## Real-World & Simulator Validation
-
-The same CC-CBF controller — without any re-tuning — was deployed on a physical MBZIRC USV and tested in the MBZIRC maritime simulator.
-
-### 🚢 Real USV Deployment
-
-**Head-On (Rule 14)**
-
-https://github.com/Muhayyuddin/cc-cbf/raw/main/videos/headson_real
-
-**Overtaking (Rule 13)**
-
-https://github.com/Muhayyuddin/cc-cbf/raw/main/videos/overtacking_real
-
-### 🖥️ MBZIRC Simulator
-
-**Head-On (Rule 14)**
-
-https://github.com/Muhayyuddin/cc-cbf/raw/main/videos/headson.mp4
-
-**Overtaking (Rule 13)**
-
-https://github.com/Muhayyuddin/cc-cbf/raw/main/videos/overtacking.mp4
-
----
-
 
 **CC-CBF** encodes both **safety** (minimum separation) and **COLREG compliance** (maritime right-of-way rules) in a single directionally asymmetric barrier function per obstacle. The encounter type (head-on, crossing, overtaking) is embedded directly into the barrier radius via cosine modulation, so the QP always projects the nominal velocity onto the COLREG-compliant side — no external rule-switching logic required.
 
@@ -131,9 +105,6 @@ collision-avoidance/
 ├── run_ablation.py                 # Component ablation study (8 CC-CBF variants)
 ├── run_sensitivity.py              # λ-sensitivity + noise-robustness sweep
 ├── generate_multi_obstacle.py      # Multi-vessel stress scenario plots (PNG + EPS)
-├── generate_paper_gifs.py          # Animated GIFs for all controllers/scenarios
-├── generate_graphical_abstract.py  # Graphical abstract figure
-├── draw_architecture.py            # Three-layer architecture block diagram
 │
 ├── results_mc_5way.csv             # Pre-computed MC results (1 000 runs)
 ├── results_ablation.csv            # Pre-computed ablation results
