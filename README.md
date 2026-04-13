@@ -167,31 +167,6 @@ python generate_multi_obstacle.py --no-gif
 #         paper/figures/multi_obstacle_mixed_rules.{png,eps}
 ```
 
-### 5 — Animated GIFs (all 20 controller × scenario combinations)
-```bash
-python generate_paper_gifs.py
-# Output: gifs_paper/*.gif
-
-# Specific controller or scenario:
-python generate_paper_gifs.py --controller CC-CBF --scenario head_on
-```
-Available controllers: `CC-CBF`, `C3BF`, `Rule-COLREG`, `Geo-CRI`, `TC-CBF`  
-Available scenarios: `head_on`, `crossing_give_way`, `overtaking`, `static_obstacles`
-
-### 6 — Graphical abstract and architecture figures
-```bash
-python generate_graphical_abstract.py
-python draw_architecture.py
-```
-
-### 7 — Compile the paper
-```bash
-cd paper
-pdflatex short-version.tex
-bibtex short-version
-pdflatex short-version.tex
-pdflatex short-version.tex
-```
 
 ---
 
