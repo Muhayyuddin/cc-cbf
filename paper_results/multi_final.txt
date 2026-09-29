@@ -1,0 +1,3 @@
+parallel_head_on   coll  0.0%  sep 13.5 ± 1.7 (min 10.3)  reached 100%  all-side 84%  | T1_Upper: 86% on own port  T2_Lower: 96% on own port
+mixed_rules        coll  0.0%  sep 18.6 ± 2.1 (min 13.0)  reached 100%  all-side 100%  | T1_HeadOn: 100% on own port  T2_Slow: 100% on own port
+[38s]

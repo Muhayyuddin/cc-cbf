@@ -1,0 +1,8 @@
+figure -> /home/claude/w/code/COLREG_Cone_CBF_RAL/figures/hcc_traces.png
+log    -> /home/claude/w/code/results_hcc_traces.csv
+
+scenario             #sw    min h   min d  post>=0  min h(tk+)  min dwell  max|dh|impl  max|dh|(21)  bound(22)    R_b
+head_on                3    243.9   23.06     True       252.2       3.50        206.9        206.9      473.0  15.70
+crossing_give_way      5    772.6   36.00     True      1017.9       0.35        331.1        331.1      473.0  15.70
+overtaking             2    182.8   22.32     True       237.2      16.45         50.8         50.8      542.5  16.81
+static_obstacles       0     97.0   18.33     True         nan        nan          0.0          0.0      520.5  16.46

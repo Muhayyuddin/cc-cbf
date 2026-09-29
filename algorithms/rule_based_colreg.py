@@ -1,49 +1,26 @@
 """
-Baseline 2: Rule-based COLREG controller.
+Baseline B2: rule-based COLREG controller (after Benjamin et al., ICRA 2006).
 
-Deterministic encounter classification mapped to fixed manoeuvres:
-- head_on -> starboard turn
-- crossing_give_way -> early starboard or slow down
-- crossing_stand_on -> hold course (emergency if needed)
-- overtaking -> starboard passing
+Deterministic encounter classification mapped to fixed manoeuvres, followed
+by the predictive safety filter of :mod:`algorithms.cbf_filter`:
+
+- head_on           -> starboard turn (Rule 14)
+- crossing_give_way -> early starboard turn or slow down (Rule 15)
+- crossing_stand_on -> hold course; late action if urgent (Rule 17)
+- overtaking        -> starboard passing (Rule 13)
 """
 
 import math
 from typing import List, Optional
+
+import data.config as cfg
 from algorithms.base_controller import BaseController
+from algorithms.cbf_filter import CBFSafetyFilter
 from core.entities import (
     VesselState, ObstacleState, ControlCommand, EncounterInfo,
     ScenarioConfig
 )
 from core.geometry import wrap_angle
-import data.config as cfg
-
-
-class _IsotropicCBFFilter:
-    """Minimal isotropic CBF safety filter (replaces deleted cbf_filter stub)."""
-
-    def filter_command(
-        self,
-        state: VesselState,
-        cmd: ControlCommand,
-        obstacles: List[ObstacleState],
-    ) -> ControlCommand:
-        if not obstacles:
-            return cmd
-        # Find closest obstacle
-        closest = min(obstacles, key=lambda o: math.hypot(o.x - state.x, o.y - state.y))
-        dist = math.hypot(closest.x - state.x, closest.y - state.y)
-        r_safe = cfg.D_SAFE + 0.5 * (cfg.USV_LENGTH + closest.length)
-        if dist < r_safe * 1.5:
-            # Back off speed proportionally when inside 1.5 × safety radius
-            factor = max(0.3, (dist - r_safe) / (r_safe * 0.5)) if dist > r_safe else 0.3
-            cmd = ControlCommand(
-                desired_heading=cmd.desired_heading,
-                desired_speed=cmd.desired_speed * factor,
-                manoeuvre=cmd.manoeuvre,
-                explanation=cmd.explanation + " [CBF speed trim]",
-            )
-        return cmd
 
 
 class RuleBasedCOLREGController(BaseController):
@@ -55,7 +32,7 @@ class RuleBasedCOLREGController(BaseController):
 
     def __init__(self):
         super().__init__(name="Rule-based COLREG")
-        self.safety_filter = _IsotropicCBFFilter()
+        self.safety_filter = CBFSafetyFilter()
         self._scalar_risk = 0.0
 
     def compute_command(
@@ -69,10 +46,8 @@ class RuleBasedCOLREGController(BaseController):
         dt: float,
         scenario_config: Optional[ScenarioConfig] = None,
     ) -> ControlCommand:
-        self.llm_queried_this_step = False
-
         nominal_heading = self.nominal_heading(state, goal_x, goal_y)
-        nominal_speed = cfg.MAX_SPEED_MPS * 0.75
+        nominal_speed = cfg.CRUISE_SPEED
 
         # Find most urgent encounter
         worst_enc = None
@@ -127,15 +102,17 @@ class RuleBasedCOLREGController(BaseController):
                 desired_heading=heading,
                 desired_speed=max(0.3, speed),
                 manoeuvre=manoeuvre,
-                explanation=f"Rule 15 crossing give-way: yield to starboard"
+                explanation="Rule 15 crossing give-way: yield to starboard"
             )
 
         elif enc.encounter_type == "crossing_stand_on":
             # Rule 17: Stand-on vessel maintains course
             if urgency > 0.8:
-                # Emergency: target not giving way
+                # Rule 17(b) late action: starboard turn at reduced speed.
+                # (The label "emergency_port" is kept from the implementation
+                # behind the paper; it only affects the commitment metric.)
                 turn = math.radians(20)
-                heading = wrap_angle(nominal_heading - turn)  # starboard as last resort
+                heading = wrap_angle(nominal_heading - turn)
                 return ControlCommand(
                     desired_heading=heading,
                     desired_speed=nominal_speed * 0.3,

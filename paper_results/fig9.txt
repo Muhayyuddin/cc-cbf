@@ -1,0 +1,35 @@
+=================================================================
+  Multi-Obstacle CC-CBF  |  Plots + GIFs
+=================================================================
+
+── parallel_head_on ──
+   Simultaneous: Parallel Head-On × 2 (Rule 14 × 2)
+  Sim done: 1488 steps, 74.3s  min_sep=13.21m  collision=False
+  [T1_Upper]: dominant=crossing_stand_on  counts={'none': 460, 'head_on': 6, 'crossing_stand_on': 560}
+  [T2_Lower]: dominant=crossing_stand_on  counts={'none': 444, 'head_on': 10, 'crossing_stand_on': 579}
+The PostScript backend does not support transparency; partially transparent artists will be rendered opaque.
+  ✓ Plot saved: /home/claude/w/code/paper/figures/multi_obstacle_parallel_head_on.png
+  ✓ EPS  saved: /home/claude/w/code/paper/figures/multi_obstacle_parallel_head_on.eps
+  ✓ Distance plot saved: /home/claude/w/code/paper/figures/multi_obstacle_parallel_head_on_distance.png
+  Done in 3.8s
+
+── mixed_rules ──
+   Simultaneous: Overtaking + Head-On (Rules 13 + 14)
+  Sim done: 1352 steps, 67.5s  min_sep=19.17m  collision=False
+  [T1_HeadOn]: dominant=crossing_stand_on  counts={'none': 305, 'crossing_stand_on': 416}
+  [T2_Slow]: dominant=overtaking  counts={'overtaking': 493, 'crossing_stand_on': 405, 'none': 454}
+The PostScript backend does not support transparency; partially transparent artists will be rendered opaque.
+  ✓ Plot saved: /home/claude/w/code/paper/figures/multi_obstacle_mixed_rules.png
+  ✓ EPS  saved: /home/claude/w/code/paper/figures/multi_obstacle_mixed_rules.eps
+  ✓ Distance plot saved: /home/claude/w/code/paper/figures/multi_obstacle_mixed_rules_distance.png
+  Done in 3.3s
+
+=================================================================
+  Finished in 7.1s
+  Plots → /home/claude/w/code/paper/figures
+  GIFs  → /home/claude/w/code/gifs_paper
+=================================================================
+    📊 multi_obstacle_parallel_head_on.png
+    📊 multi_obstacle_parallel_head_on_distance.png
+    📊 multi_obstacle_mixed_rules.png
+    📊 multi_obstacle_mixed_rules_distance.png

@@ -1,20 +1,22 @@
 """
-Baseline 1: Geometric CRI controller.
+Baseline B3: geometric collision-risk-index (Geo-CRI) controller
+(after the DCPA/TCPA risk indices surveyed by Huang et al., Safety Sci. 2020).
 
-Uses scalar CRI based on DCPA / TCPA and distance.
-When CRI exceeds threshold, performs starboard turn and/or slow down.
+A scalar CRI is computed from distance, DCPA and TCPA; above
+GEO_CRI_THRESHOLD the controller blends in a starboard turn and speed
+reduction.  Commands pass through the predictive safety filter of
+:mod:`algorithms.cbf_filter`.
 """
 
-import math
 from typing import List, Optional
-from algorithms.base_controller import BaseController
-from core.entities import (
-    VesselState, ObstacleState, ControlCommand, EncounterInfo,
-    RiskVector, ScenarioConfig
-)
-from core.geometry import wrap_angle, compute_dcpa_tcpa, center_distance
-from algorithms.rule_based_colreg import _IsotropicCBFFilter
+
 import data.config as cfg
+from algorithms.base_controller import BaseController
+from algorithms.cbf_filter import CBFSafetyFilter
+from core.entities import (
+    VesselState, ObstacleState, ControlCommand, EncounterInfo, ScenarioConfig
+)
+from core.geometry import wrap_angle
 
 
 class GeometricCRIController(BaseController):
@@ -27,7 +29,7 @@ class GeometricCRIController(BaseController):
 
     def __init__(self):
         super().__init__(name="Geometric CRI")
-        self.safety_filter = _IsotropicCBFFilter()
+        self.safety_filter = CBFSafetyFilter()
         self._scalar_risk = 0.0
 
     def compute_command(
@@ -41,11 +43,9 @@ class GeometricCRIController(BaseController):
         dt: float,
         scenario_config: Optional[ScenarioConfig] = None,
     ) -> ControlCommand:
-        self.llm_queried_this_step = False
-
-        # Nominal heading to goal
+        # Nominal heading to goal at cruise speed
         nominal_heading = self.nominal_heading(state, goal_x, goal_y)
-        nominal_speed = cfg.MAX_SPEED_MPS * 0.75  # cruise at 75% max
+        nominal_speed = cfg.CRUISE_SPEED
 
         # Compute scalar CRI for all obstacles
         max_cri = 0.0

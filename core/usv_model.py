@@ -19,16 +19,19 @@ Dynamics:
 """
 
 import math
+
 import numpy as np
-from core.entities import USVParameters, VesselState, ThrusterCommand
+
 import data.config as cfg
+from core.entities import USVParameters, VesselState, ThrusterCommand
 
 
 class USVModel:
     """
     Simplified planar dynamics model for the MBZIRC USV.
 
-    Uses Euler integration for state updates.
+    Semi-implicit Euler integration: speeds are updated from the forces, the
+    pose from the speeds at the start of the step.
     """
 
     def __init__(self, params: USVParameters = None):
@@ -47,8 +50,9 @@ class USVModel:
             new VesselState after integration
         """
         p = self.params
-        T_L = np.clip(cmd.T_L, -p.max_thruster_thrust * 0.1, p.max_thruster_thrust)
-        T_R = np.clip(cmd.T_R, -p.max_thruster_thrust * 0.1, p.max_thruster_thrust)
+        t_min = -p.max_thruster_thrust * cfg.MAX_REVERSE_THRUST_FRACTION
+        T_L = np.clip(cmd.T_L, t_min, p.max_thruster_thrust)
+        T_R = np.clip(cmd.T_R, t_min, p.max_thruster_thrust)
 
         # Total and differential thrust
         T_total = T_L + T_R
@@ -66,12 +70,9 @@ class USVModel:
         new_u = state.u + du_dt * dt
         new_r = state.r + dr_dt * dt
 
-        # Clamp speed
-        new_u = np.clip(new_u, -0.5, p.max_speed)  # allow small reverse
-
-        # Clamp yaw rate to reasonable bounds
-        max_yaw_rate = 1.0  # rad/s, physical limit for 6m USV
-        new_r = np.clip(new_r, -max_yaw_rate, max_yaw_rate)
+        # Saturate surge speed (small reverse allowed) and yaw rate
+        new_u = np.clip(new_u, cfg.MIN_SURGE_SPEED, p.max_speed)
+        new_r = np.clip(new_r, -cfg.MAX_YAW_RATE, cfg.MAX_YAW_RATE)
 
         # Kinematics
         new_psi = state.psi + state.r * dt  # use current r for semi-implicit

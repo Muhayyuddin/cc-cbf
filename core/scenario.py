@@ -1,15 +1,18 @@
 """
-Scenario generators for the collision avoidance simulator.
+Scenario generators.
 
-All scenarios are scaled for a 6 m class USV with max speed ~4.1 m/s.
+Four canonical scenarios (head-on, crossing give-way, overtaking, static
+obstacle field; paper Sec. VI-A) and three multi-vessel scenarios
+(paper Sec. VI-G).  All are scaled for a 6 m class USV with a maximum speed
+of ~4.1 m/s.  Every generator is deterministic for a given *seed*; the
+perturbation magnitudes are set by *offset*, *speed_var* and *heading_var*
+(zero gives the nominal geometry up to the unit-variance position jitter).
 """
 
 import math
-import copy
 import random
-from typing import List
+
 from core.entities import VesselState, ObstacleState, ScenarioConfig
-import data.config as cfg
 
 
 def create_head_on_scenario(seed: int = 0, offset: float = 0.0,
@@ -383,6 +386,13 @@ def create_mixed_rules_scenario(seed: int = 0, offset: float = 0.0,
         ),
     )
 
+
+# Canonical single-encounter scenarios (paper Tables III-VII)
+CANONICAL_SCENARIOS = ["head_on", "crossing_give_way", "overtaking", "static_obstacles"]
+# COLREG encounters used by the ablation and sensitivity studies
+COLREG_SCENARIOS = ["head_on", "crossing_give_way", "overtaking"]
+# Multi-vessel scenarios (paper Sec. VI-G uses the last two)
+MULTI_VESSEL_SCENARIOS = ["head_on_then_overtaking", "parallel_head_on", "mixed_rules"]
 
 SCENARIO_GENERATORS = {
     'head_on':                   create_head_on_scenario,

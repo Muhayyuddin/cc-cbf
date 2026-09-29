@@ -1,0 +1,16 @@
+table,scenario,ctrl,lam,rcc,sep,side_pct,commit,coll_pct
+A,head_on,C3BF,---,nan,30.57,55.0,19.04,0.0
+A,head_on,CC-CBF,0.0,15.7,20.16,95.0,16.5,0.0
+A,head_on,CC-CBF,0.3,18.55,20.16,95.0,16.49,0.0
+A,head_on,CC-CBF,0.6,21.4,20.17,95.0,16.49,0.0
+A,head_on,CC-CBF,0.9,24.25,20.17,95.0,16.49,0.0
+A,crossing_give_way,C3BF,---,nan,35.58,25.0,22.97,0.0
+A,crossing_give_way,CC-CBF,0.0,15.7,28.36,100.0,27.0,0.0
+A,crossing_give_way,CC-CBF,0.3,20.23,28.9,100.0,27.21,0.0
+A,crossing_give_way,CC-CBF,0.6,24.77,29.8,100.0,27.53,0.0
+A,crossing_give_way,CC-CBF,0.9,29.1,30.97,97.5,28.5,0.0
+A,overtaking,C3BF,---,nan,18.49,37.5,40.73,0.0
+A,overtaking,CC-CBF,0.0,16.81,18.87,85.0,42.49,0.0
+A,overtaking,CC-CBF,0.3,20.82,19.1,92.5,42.23,0.0
+A,overtaking,CC-CBF,0.6,24.79,19.23,97.5,42.7,0.0
+A,overtaking,CC-CBF,0.9,28.66,19.2,100.0,43.74,0.0

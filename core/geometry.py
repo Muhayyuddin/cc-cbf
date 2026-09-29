@@ -5,7 +5,7 @@ distance computation, and footprint operations.
 
 import math
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple
 
 
 def rotation_matrix(angle: float) -> np.ndarray:
@@ -92,9 +92,11 @@ def point_to_segment_dist(p: np.ndarray, a: np.ndarray, b: np.ndarray) -> float:
 
 def min_distance_rects(cx1, cy1, l1, w1, h1, cx2, cy2, l2, w2, h2) -> float:
     """
-    Approximate minimum distance between two oriented rectangles.
+    Minimum distance between two oriented rectangles (hull-to-hull clearance).
 
-    Uses vertex-to-edge distances. Returns 0 if overlapping.
+    For disjoint convex polygons the minimum is attained between a vertex of
+    one and an edge of the other, so the vertex-to-edge search is exact.
+    Returns 0 if the rectangles overlap.
     """
     c1 = oriented_rect_corners(cx1, cy1, l1, w1, h1)
     c2 = oriented_rect_corners(cx2, cy2, l2, w2, h2)
@@ -136,7 +138,8 @@ def bearing_from_to(x1: float, y1: float, psi1: float,
     """
     Relative bearing from vessel at (x1,y1) heading psi1 to point (x2,y2).
 
-    Returns angle in [-pi, pi]. Positive = starboard, negative = port.
+    Returns an angle in [-pi, pi], counter-clockwise positive:
+    positive = port, negative = starboard.
     """
     dx = x2 - x1
     dy = y2 - y1

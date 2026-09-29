@@ -6,13 +6,13 @@ This module converts those into twin-thruster commands (T_L, T_R)
 through a shared speed + heading controller with feedforward.
 """
 
-import math
 import numpy as np
+
+import data.config as cfg
 from core.entities import (
     USVParameters, VesselState, ControlCommand, ThrusterCommand
 )
 from core.geometry import wrap_angle
-import data.config as cfg
 
 
 class Autopilot:
@@ -64,9 +64,11 @@ class Autopilot:
         u_ref = cmd.desired_speed
         feedforward = p.x_u * u_ref + p.x_uu * abs(u_ref) * u_ref
 
-        T_common = (feedforward +
-                     self.kp_speed * speed_error +
-                     self.ki_speed * self._speed_integral)
+        # feedforward and PI act on the TOTAL surge thrust; each of the two
+        # thrusters supplies half of it
+        T_common = 0.5 * (feedforward +
+                          self.kp_speed * speed_error +
+                          self.ki_speed * self._speed_integral)
 
         # --- Heading controller ---
         heading_error = wrap_angle(cmd.desired_heading - state.psi)
@@ -81,9 +83,8 @@ class Autopilot:
         T_L = T_common - T_diff
         T_R = T_common + T_diff
 
-        # Clamp to thruster limits
-        # Allow small reverse for braking, but primarily forward thrust
-        T_min = -p.max_thruster_thrust * 0.1  # 10% reverse
+        # Clamp to thruster limits (small reverse thrust allowed for braking)
+        T_min = -p.max_thruster_thrust * cfg.MAX_REVERSE_THRUST_FRACTION
         T_max = p.max_thruster_thrust
 
         T_L = float(np.clip(T_L, T_min, T_max))

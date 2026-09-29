@@ -1,0 +1,21 @@
+head_on            CC-CBF       coll   0.0%  sep   16.69 ± 3.01  col  1.00 ± 0.00  eff  0.95 ± 0.08  minsep  11.03  mincol 1.00
+head_on            C3BF         coll   0.0%  sep   29.58 ± 1.88  col  0.51 ± 0.34  eff  0.96 ± 0.02  minsep  26.54  mincol 0.06
+head_on            Rule-COLREG  coll  20.0%  sep    4.69 ± 4.28  col  1.00 ± 0.00  eff  1.03 ± 0.01  minsep   0.00  mincol 1.00
+head_on            Geo-CRI      coll  16.0%  sep    7.19 ± 5.12  col  0.83 ± 0.14  eff  1.04 ± 0.01  minsep   0.00  mincol 0.58
+head_on            TC-CBF       coll   0.0%  sep   18.00 ± 4.26  col  0.76 ± 0.19  eff  0.98 ± 0.03  minsep  12.21  mincol 0.55
+crossing_give_way  CC-CBF       coll   0.0%  sep   29.82 ± 5.21  col  1.00 ± 0.01  eff  0.95 ± 0.02  minsep  20.97  mincol 0.95
+crossing_give_way  C3BF         coll   0.0%  sep   28.61 ± 4.30  col  0.22 ± 0.17  eff  1.01 ± 0.01  minsep  22.62  mincol 0.02
+crossing_give_way  Rule-COLREG  coll   8.0%  sep    9.06 ± 4.13  col  1.00 ± 0.00  eff  1.03 ± 0.00  minsep   0.00  mincol 0.99
+crossing_give_way  Geo-CRI      coll  14.0%  sep    9.50 ± 7.58  col  0.68 ± 0.14  eff  1.05 ± 0.00  minsep   0.00  mincol 0.50
+crossing_give_way  TC-CBF       coll   0.0%  sep   16.74 ± 4.03  col  0.71 ± 0.08  eff  1.00 ± 0.06  minsep  13.39  mincol 0.63
+overtaking         CC-CBF       coll   0.0%  sep   16.92 ± 3.45  col  1.00 ± 0.00  eff  1.00 ± 0.01  minsep  12.94  mincol 1.00
+overtaking         C3BF         coll   0.0%  sep   17.02 ± 2.12  col  0.46 ± 0.50  eff  1.02 ± 0.01  minsep  12.56  mincol 0.00
+overtaking         Rule-COLREG  coll   0.0%  sep    9.31 ± 1.57  col  1.00 ± 0.01  eff  1.03 ± 0.02  minsep   5.04  mincol 0.92
+overtaking         Geo-CRI      coll   0.0%  sep    8.31 ± 0.29  col  0.48 ± 0.12  eff  1.05 ± 0.01  minsep   8.02  mincol 0.18
+overtaking         TC-CBF       coll   0.0%  sep   11.33 ± 1.36  col  0.90 ± 0.11  eff  0.96 ± 0.11  minsep   8.92  mincol 0.64
+static_obstacles   CC-CBF       coll   0.0%  sep   10.98 ± 1.12  col  1.00 ± 0.00  eff  0.92 ± 0.04  minsep   8.64  mincol 1.00
+static_obstacles   C3BF         coll   0.0%  sep   14.66 ± 1.77  col  1.00 ± 0.00  eff  0.78 ± 0.02  minsep  13.46  mincol 1.00
+static_obstacles   Rule-COLREG  coll   0.0%  sep    9.43 ± 0.64  col  1.00 ± 0.00  eff  1.45 ± 0.79  minsep   8.82  mincol 1.00
+static_obstacles   Geo-CRI      coll   0.0%  sep    8.87 ± 0.63  col  1.00 ± 0.00  eff  2.03 ± 0.70  minsep   8.15  mincol 1.00
+static_obstacles   TC-CBF       coll   0.0%  sep   10.92 ± 1.22  col  1.00 ± 0.00  eff  0.92 ± 0.03  minsep   8.26  mincol 1.00
+[1697s]

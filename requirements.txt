@@ -1,4 +1,4 @@
-matplotlib>=3.5
+# Runtime dependencies (tested with Python 3.10, NumPy 1.26, Matplotlib 3.5, Pillow 12)
 numpy>=1.21
-scipy>=1.7
+matplotlib>=3.5
 Pillow>=9.0

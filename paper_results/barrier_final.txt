@@ -1,0 +1,1 @@
+theta_C (deg): {'head_on': -45, 'crossing_give_way': 60, 'crossing_stand_on': 60, 'overtaking': -30, 'none': 0} -> /home/claude/w/code/COLREG_Cone_CBF_RAL/figures/barrier_shape.png

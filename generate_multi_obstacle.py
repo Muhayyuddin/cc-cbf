@@ -1,57 +1,54 @@
 #!/usr/bin/env python3
 """
-generate_multi_obstacle.py
-==========================
-Run the three multi-vessel scenarios with CC-CBF, save:
-  1. Static PNG plots  → paper/figures/multi_obstacle_<name>.png
-  2. Animated GIFs     → gifs_paper/multi_<name>.gif
+Fig. 9: the two multi-vessel scenarios with CC-CBF (seed 42).
 
 Scenarios
 ---------
-  head_on_then_overtaking  : sequential Rule-14 then Rule-13
-  parallel_head_on         : simultaneous Rule-14 × 2
-  mixed_rules              : simultaneous Rule-14 + Rule-13
+  parallel_head_on : two simultaneous Rule-14 targets in parallel lanes
+  mixed_rules      : simultaneous Rule-13 (overtaking) and Rule-14 targets
 
 Usage
 -----
-    python generate_multi_obstacle.py
-    python generate_multi_obstacle.py --scenario parallel_head_on
-    python generate_multi_obstacle.py --no-gif
+    python generate_multi_obstacle.py                 # plots + GIFs
+    python generate_multi_obstacle.py --no-gif        # plots only (fast)
+    python generate_multi_obstacle.py --scenario parallel_head_on --combined
+
+Outputs
+-------
+    figures/multi_obstacle_<name>.png / .eps           trajectory map
+    figures/multi_obstacle_<name>_distance.png         clearance vs time
+    figures/multi_obstacle_combined.png / .eps         (--combined)
+    figures/gifs/multi_<name>.gif                      animation
 """
 
-import os, sys, io, time, math, argparse
+import argparse
+import io
+import math
+import os
+import sys
+import time
 from collections import Counter
-
-import numpy as np
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.patheffects as pe
-from matplotlib.patches import Circle, FancyArrowPatch
-from matplotlib.lines import Line2D
-from matplotlib.collections import LineCollection
-from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from core.scenario import get_scenario
-from core.simulator import Simulator
-from core.entities import USVParameters
-from core.colregs import classify_encounter
-from core.geometry import center_distance
-from algorithms.cc_cbf import (
-    CCCBFController, R_BASE, LAMBDA, THETA_C, ACTIVATION_RANGE, _obs_rb,
-)
-import data.config as cfg
+import matplotlib                                              # noqa: E402
+matplotlib.use("Agg")
+import matplotlib.patheffects as pe                            # noqa: E402
+import matplotlib.pyplot as plt                                # noqa: E402
+import numpy as np                                             # noqa: E402
+from matplotlib.lines import Line2D                            # noqa: E402
+from matplotlib.patches import Circle                          # noqa: E402
+from PIL import Image                                          # noqa: E402
 
-# ─────────────────────────────────────────────────────────────────────
-# Output paths
-# ─────────────────────────────────────────────────────────────────────
-_HERE       = os.path.dirname(os.path.abspath(__file__))
-PLOT_DIR    = os.path.join(_HERE, "paper", "figures")
-GIF_DIR     = os.path.join(_HERE, "gifs_paper")
-os.makedirs(PLOT_DIR, exist_ok=True)
-os.makedirs(GIF_DIR,  exist_ok=True)
+import data.config as cfg                                      # noqa: E402
+from algorithms.cc_cbf import (                                # noqa: E402
+    CCCBFController, LAMBDA, R_BASE, _phi_and_dphi,
+)
+from core.entities import EncounterInfo, USVParameters         # noqa: E402
+from core.evaluation import FIGURES_DIR, ensure_dir            # noqa: E402
+from core.geometry import center_distance                      # noqa: E402
+from core.scenario import get_scenario                         # noqa: E402
+from core.simulator import Simulator                           # noqa: E402
 
 # ─────────────────────────────────────────────────────────────────────
 # Scenario registry
@@ -113,10 +110,23 @@ MAX_FRAMES = 14 * FPS
 # Simulation
 # ─────────────────────────────────────────────────────────────────────
 def run_sim(scenario_name: str, seed: int = SEED):
+    """Run CC-CBF; path colours use the controller's own mode tau of the
+    nearest target (not the simulator's memoryless evaluation class)."""
     sc = get_scenario(scenario_name, seed=seed)
     ctrl = CCCBFController()
     sim  = Simulator(sc, ctrl, USVParameters())
+    taus = []
+    orig = ctrl.compute_command
+    def wrapped(*a, **k):
+        cmd = orig(*a, **k); taus.append(dict(ctrl._tau)); return cmd
+    ctrl.compute_command = wrapped
     sim.run_to_completion()
+    for r, tau in zip(sim.records, taus):
+        if r.state is None or not r.obstacles:
+            continue
+        near = min(r.obstacles, key=lambda o: math.hypot(o.x - r.state.x, o.y - r.state.y))
+        r.encounter = EncounterInfo(encounter_type=tau.get(near.label, "none"),
+                                    target_label=near.label)
     return sim.records, sc
 
 
@@ -164,13 +174,14 @@ def gradient_trail(ax, xs, ys, color, lw=2.2, alpha_range=(0.08, 0.7),
 
 def draw_cc_cbf_barrier_frame(ax, own_x, own_y, own_psi, enc_type, color,
                                alpha_fill=0.10, alpha_line=0.50):
-    """Draw the CC-CBF directional barrier contour at the current position."""
+    """Draw the CC-CBF directional barrier contour R_CC around the own ship:
+    a target at world bearing *a* violates the barrier when it is closer
+    than R_CC(a - psi)."""
     lam = LAMBDA.get(enc_type, 0.0)
-    tc  = THETA_C.get(enc_type, 0.0)
     n   = 180
     angles = np.linspace(0, 2*np.pi, n)
     radii  = np.array([
-        R_BASE * (1.0 + lam * max(0.0, math.cos(a - own_psi - tc)))
+        R_BASE * (1.0 + lam * _phi_and_dphi(a - own_psi, enc_type)[0])
         for a in angles
     ])
     xs = own_x + radii * np.cos(angles)
@@ -195,15 +206,12 @@ def per_obstacle_encounter_counts(records):
 # ─────────────────────────────────────────────────────────────────────
 # Static plot  — trajectory map only
 # ─────────────────────────────────────────────────────────────────────
-def make_static_plot(records, scenario, scenario_name, cfg_info):
+def make_static_plot(records, scenario, scenario_name, cfg_info, out_dir):
     """Single-panel trajectory map (no right panels, no text box)."""
     n_targets = len(scenario.targets)
     tcolors   = TARGET_COLORS[:n_targets]
 
-    # ── collect data ──
-    ts  = [r.time for r in records]
     ds  = [r.min_distance for r in records]
-    obs_labels = [t.label for t in scenario.targets]
 
     # CPA index
     cpa_idx = int(np.argmin(ds))
@@ -290,10 +298,10 @@ def make_static_plot(records, scenario, scenario_name, cfg_info):
     ax_map.set_aspect("equal")
 
     fig.tight_layout()
-    out_path = os.path.join(PLOT_DIR, f"multi_obstacle_{scenario_name}.png")
+    out_path = os.path.join(out_dir, f"multi_obstacle_{scenario_name}.png")
     fig.savefig(out_path, dpi=150, bbox_inches='tight',
                 facecolor='white', edgecolor='none')
-    out_eps = os.path.join(PLOT_DIR, f"multi_obstacle_{scenario_name}.eps")
+    out_eps = os.path.join(out_dir, f"multi_obstacle_{scenario_name}.eps")
     fig.savefig(out_eps, format='eps', bbox_inches='tight')
     plt.close(fig)
     print(f"  ✓ Plot saved: {out_path}")
@@ -304,7 +312,7 @@ def make_static_plot(records, scenario, scenario_name, cfg_info):
 # ─────────────────────────────────────────────────────────────────────
 # Separation distance — standalone plot
 # ─────────────────────────────────────────────────────────────────────
-def make_distance_plot(records, scenario, scenario_name, cfg_info):
+def make_distance_plot(records, scenario, scenario_name, cfg_info, out_dir):
     """Standalone separation distance vs time plot."""
     n_targets  = len(scenario.targets)
     tcolors    = TARGET_COLORS[:n_targets]
@@ -352,12 +360,11 @@ def make_distance_plot(records, scenario, scenario_name, cfg_info):
     ax.set_ylim(0, None)
 
     fig.tight_layout()
-    out_path = os.path.join(PLOT_DIR, f"multi_obstacle_{scenario_name}_distance.png")
+    out_path = os.path.join(out_dir, f"multi_obstacle_{scenario_name}_distance.png")
     fig.savefig(out_path, dpi=150, bbox_inches='tight',
                 facecolor='white', edgecolor='none')
     plt.close(fig)
     print(f"  ✓ Distance plot saved: {out_path}")
-    return out_path
     return out_path
 
 
@@ -534,7 +541,7 @@ def render_gif_frame(fig, ax, records, scenario, scenario_name,
 # ─────────────────────────────────────────────────────────────────────
 # GIF generator
 # ─────────────────────────────────────────────────────────────────────
-def make_gif(records, scenario, scenario_name, cfg_info):
+def make_gif(records, scenario, scenario_name, cfg_info, out_dir):
     n = len(records)
     indices = list(range(0, n, FRAME_SKIP))
     if indices[-1] != n - 1:
@@ -571,7 +578,7 @@ def make_gif(records, scenario, scenario_name, cfg_info):
     for _ in range(FPS):
         images.append(images[-1])
 
-    out_path = os.path.join(GIF_DIR, f"multi_{scenario_name}.gif")
+    out_path = os.path.join(out_dir, f"multi_{scenario_name}.gif")
     images[0].save(out_path, save_all=True, append_images=images[1:],
                    duration=int(1000 / FPS), loop=0, optimize=True)
     sz = os.path.getsize(out_path) / (1024 * 1024)
@@ -582,13 +589,14 @@ def make_gif(records, scenario, scenario_name, cfg_info):
 # ─────────────────────────────────────────────────────────────────────
 # Combined two-scenario subfigure
 # ─────────────────────────────────────────────────────────────────────
-def make_combined_plot(all_data):
-    """Render both scenarios side-by-side as (a)/(b) subfigures.
+def make_combined_plot(all_data, out_dir):
+    """Render the scenarios side-by-side as (a)/(b) subfigures.
 
     all_data : list of (records, scenario, scenario_name, cfg_info)
     """
     n = len(all_data)
     fig, axes = plt.subplots(1, n, figsize=(10 * n, 8))
+    axes = np.atleast_1d(axes)
     fig.patch.set_facecolor("white")
 
     subfig_labels = ["(a)", "(b)", "(c)"]
@@ -598,7 +606,6 @@ def make_combined_plot(all_data):
         n_targets = len(scenario.targets)
         tcolors   = TARGET_COLORS[:n_targets]
 
-        ts = [r.time for r in records]
         ds = [r.min_distance for r in records]
         cpa_idx = int(np.argmin(ds))
 
@@ -689,10 +696,10 @@ def make_combined_plot(all_data):
 
     fig.tight_layout(w_pad=3.0)
 
-    out_png = os.path.join(PLOT_DIR, "multi_obstacle_combined.png")
+    out_png = os.path.join(out_dir, "multi_obstacle_combined.png")
     fig.savefig(out_png, dpi=150, bbox_inches='tight',
                 facecolor='white', edgecolor='none')
-    out_eps = os.path.join(PLOT_DIR, "multi_obstacle_combined.eps")
+    out_eps = os.path.join(out_dir, "multi_obstacle_combined.eps")
     fig.savefig(out_eps, format='eps', bbox_inches='tight')
     plt.close(fig)
     print(f"  ✓ Combined PNG saved: {out_png}")
@@ -704,13 +711,20 @@ def make_combined_plot(all_data):
 # Main
 # ─────────────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="Multi-obstacle scenarios")
+    parser = argparse.ArgumentParser(description="Fig. 9: multi-vessel scenarios")
     parser.add_argument("--scenario", default=None,
                         choices=list(SCENARIOS.keys()),
-                        help="Run a single scenario (default: all 3)")
+                        help="Run a single scenario (default: both)")
+    parser.add_argument("--seed", type=int, default=SEED, help=f"scenario seed (default: {SEED})")
     parser.add_argument("--no-gif", action="store_true",
                         help="Skip GIF generation (plots only)")
+    parser.add_argument("--combined", action="store_true",
+                        help="Also render the scenarios side by side in one figure")
+    parser.add_argument("--out-dir", default=FIGURES_DIR,
+                        help="output directory (default: <repo>/figures)")
     args = parser.parse_args()
+    plot_dir = ensure_dir(args.out_dir)
+    gif_dir = os.path.join(plot_dir, "gifs")
 
     scen_keys = [args.scenario] if args.scenario else list(SCENARIOS.keys())
 
@@ -721,6 +735,7 @@ def main():
     t0_total = time.time()
     plot_paths = []
     gif_paths  = []
+    all_data   = []
 
     for sname in scen_keys:
         cfg_info = SCENARIOS[sname]
@@ -728,7 +743,8 @@ def main():
         print(f"   {cfg_info['title']}")
 
         t0 = time.time()
-        records, scenario = run_sim(sname)
+        records, scenario = run_sim(sname, args.seed)
+        all_data.append((records, scenario, sname, cfg_info))
         min_d     = min(r.min_distance for r in records)
         collision = any(r.collision for r in records)
         print(f"  Sim done: {len(records)} steps, {records[-1].time:.1f}s  "
@@ -741,24 +757,28 @@ def main():
             print(f"  [{lbl}]: dominant={dominant}  counts={dict(cnts)}")
 
         # Static plot
-        p = make_static_plot(records, scenario, sname, cfg_info)
+        p = make_static_plot(records, scenario, sname, cfg_info, plot_dir)
         plot_paths.append(p)
 
         # Separate distance plot
-        pd = make_distance_plot(records, scenario, sname, cfg_info)
+        pd = make_distance_plot(records, scenario, sname, cfg_info, plot_dir)
         plot_paths.append(pd)
 
         # GIF
         if not args.no_gif:
-            g = make_gif(records, scenario, sname, cfg_info)
+            g = make_gif(records, scenario, sname, cfg_info, ensure_dir(gif_dir))
             gif_paths.append(g)
 
         print(f"  Done in {time.time()-t0:.1f}s")
 
+    if args.combined:
+        plot_paths.append(make_combined_plot(all_data, plot_dir))
+
     print(f"\n{'='*65}")
     print(f"  Finished in {time.time()-t0_total:.1f}s")
-    print(f"  Plots → {PLOT_DIR}")
-    print(f"  GIFs  → {GIF_DIR}")
+    print(f"  Plots → {plot_dir}")
+    if gif_paths:
+        print(f"  GIFs  → {gif_dir}")
     print(f"{'='*65}")
     for p in plot_paths:
         print(f"    📊 {os.path.basename(p)}")

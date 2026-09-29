@@ -1,5 +1,5 @@
 """
-Baseline: Collision Cone CBF (C3BF) — Tayal et al. (ACC 2024)
+Baseline B1: Collision-Cone CBF (C3BF) -- Tayal et al. (ACC 2024)
 ===============================================================
 Implements the vanilla Collision Cone Control Barrier Function from:
 
@@ -17,17 +17,16 @@ where
     cos(phi) = sqrt(||p_rel||^2 - r^2) / ||p_rel||
     r     = combined safety radius
 
-The constraint  dh/dt >= -alpha*h  is linear in u = [vx, vy] and solved
-via the same analytical QP as CC-CBF.
+The barrier is linearised in u = [vx, vy] (own velocity) and the
+resulting constraints are enforced by cyclic projection.
 
-Key differences from CC-CBF (our proposed method):
-  1. NO directional asymmetry (no COLREG cone / THETA_C / LAMBDA)
-  2. NO COLREG bias on u_nom
-  3. Isotropic safety radius — same in all bearings
-  => Pure safety, no COLREG awareness.
+Differences from CC-CBF:
+  1. no directional asymmetry (isotropic radius, no lambda / theta_C);
+  2. no COLREG shaping of the nominal velocity;
+  => pure safety, no COLREG awareness.
 
-This is the most relevant CBF-class baseline because it uses the same
-collision-cone geometry but WITHOUT the COLREG extensions.
+This is the closest CBF-class baseline: the same velocity-space CBF
+structure and tightening, without the COLREG extensions.
 """
 
 from __future__ import annotations
@@ -37,13 +36,14 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from algorithms.base_controller import BaseController
+import data.config as cfg
+from algorithms.base_controller import (
+    BaseController, cyclic_projection, manoeuvre_label,
+)
 from core.entities import (
-    ControlCommand, EncounterInfo, ObstacleState, RiskVector,
-    ScenarioConfig, USVParameters, VesselState,
+    ControlCommand, EncounterInfo, ObstacleState, ScenarioConfig, VesselState,
 )
 from core.geometry import wrap_angle
-import data.config as cfg
 
 # =====================================================================
 # C3BF parameters
@@ -136,28 +136,18 @@ class C3BFController(BaseController):
         obs: ObstacleState,
     ) -> Tuple[np.ndarray, float, float]:
         """
-        Derive the linear constraint from dh/dt >= -alpha*h.
+        Linear constraint a^T u >= c for one obstacle.
 
-        h = <p_rel, v_rel> + ||p_rel|| * ||v_rel|| * cos(phi)
+        h depends on u through v_rel = v_obs - u.  Linearising h around the
+        current velocity u0,
 
-        Since v_rel = v_obs - v_own, and u = v_own = [vx, vy]:
-            v_rel = v_obs - u
+            h(u) ~ h(u0) + (dh/du)^T (u - u0),
 
-        The terms involving u:
-            <p_rel, v_rel> = <p_rel, v_obs - u> = <p_rel, v_obs> - <p_rel, u>
-            ||v_rel|| = ||v_obs - u||
+        and requiring h(u) >= -alpha * h(u0) gives
 
-        For the QP we linearize around the current state. The constraint
-        dh/dt >= -alpha*h is enforced as:
+            a = dh/du,   c = -(1 + alpha) h(u0) + a^T u0 + tightening.
 
-            a^T u >= c
-
-        We compute dh/du (gradient of h w.r.t. u) and use:
-            h(u) ≈ h(u0) + (dh/du)^T (u - u0)
-            dh/dt ≈ (dh/du)^T du/dt ≈ ... 
-
-        More directly: since h is a function of u (via v_rel), we compute
-        dh/du analytically and form the constraint.
+        Returns ``(a, c, h)``.
         """
         # Own velocity
         own_vx = state.u * math.cos(state.psi)
@@ -199,24 +189,7 @@ class C3BFController(BaseController):
         dh_du_x = -prx - p_norm * cos_phi * vrx / v_norm
         dh_du_y = -pry - p_norm * cos_phi * vry / v_norm
 
-        # For time derivative approach:
-        # dh/dt = (dh/dp) * dp/dt + (dh/dv_rel) * dv_rel/dt
-        # dp/dt = v_obs - v_own  (= v_rel, obstacle - own convention)
-        # For the linearized QP we use:
-        #   dh/dt involves dp/dt and dv_rel/dt terms
-        #   dp/dt = v_rel (not controllable directly)
-        #   We treat dp/dt contribution as bias b
-        #
-        # Actually, the standard C3BF-QP from Tayal et al. uses:
-        #   The full Lie derivative L_f h + L_g h * u >= -alpha * h
-        #
-        # For our velocity-controlled model (u = [vx, vy]):
-        #   h depends on u via v_rel = v_obs - u
-        #   The constraint is simply:  h(u) >= 0  enforced as
-        #   h(u_current) + dh/du * (u - u_current) >= -alpha * h(u_current)
-        #   => dh/du * u >= -alpha * h - h + dh/du * u_current
-        #   => a^T u >= c
-
+        # Linearisation around the current velocity (see docstring)
         a = np.array([dh_du_x, dh_du_y])
         u_current = np.array([own_vx, own_vy])
         bias = a @ u_current
@@ -241,7 +214,7 @@ class C3BFController(BaseController):
         return a, c, h
 
     # =================================================================
-    # Analytical QP solver  (same as CC-CBF — iterative projection)
+    # QP:  min ||u - u_nom||^2  s.t.  A u >= c, ||u|| <= v_max
     # =================================================================
 
     @staticmethod
@@ -251,37 +224,8 @@ class C3BFController(BaseController):
         c_vec: np.ndarray,
         v_max: float,
     ) -> np.ndarray:
-        """
-        min ||u - u_nom||^2  s.t.  A[i]@u >= c[i],  ||u|| <= v_max
-        """
-        u = u_nom.copy()
-        n = A.shape[0] if A.ndim == 2 else 0
-
-        if n == 0:
-            norm = np.linalg.norm(u)
-            if norm > v_max:
-                u = u * (v_max / norm)
-            return u
-
-        for _iteration in range(10):
-            violated = False
-            for i in range(n):
-                ai = A[i]
-                ci = c_vec[i]
-                margin = ai @ u - ci
-                if margin < 0:
-                    a_norm_sq = ai @ ai
-                    if a_norm_sq > 1e-12:
-                        u = u + (-margin / a_norm_sq) * ai
-                    violated = True
-            if not violated:
-                break
-
-        norm = np.linalg.norm(u)
-        if norm > v_max:
-            u = u * (v_max / norm)
-
-        return u
+        """Cyclic projection (10 sweeps) followed by speed clipping."""
+        return cyclic_projection(u_nom, A, c_vec, v_max, max_iter=10)
 
     # =================================================================
     # Main control loop
@@ -299,10 +243,8 @@ class C3BFController(BaseController):
         scenario_config: Optional[ScenarioConfig] = None,
     ) -> ControlCommand:
 
-        self.llm_queried_this_step = False
-
         nom_heading = self.nominal_heading(state, goal_x, goal_y)
-        nom_speed = cfg.MAX_SPEED_MPS * 0.75
+        nom_speed = cfg.CRUISE_SPEED
 
         if not obstacles:
             self._risk = 0.0
@@ -353,10 +295,9 @@ class C3BFController(BaseController):
         des_speed = float(np.linalg.norm(u_safe))
         des_speed = max(0.0, min(des_speed, cfg.MAX_SPEED_MPS))
 
-        # Manoeuvre label (same vocabulary as metrics.py)
         heading_delta = wrap_angle(des_heading - nom_heading)
         speed_ratio = des_speed / max(nom_speed, 0.01)
-        man = _label(heading_delta, speed_ratio)
+        man = manoeuvre_label(heading_delta, speed_ratio)
         self._man = man
 
         if man == "hold_course":
@@ -375,9 +316,6 @@ class C3BFController(BaseController):
     # Interface
     # =================================================================
 
-    def get_risk_vector(self) -> Optional[RiskVector]:
-        return RiskVector(Rg=self._risk)
-
     def get_scalar_risk(self) -> float:
         return self._risk
 
@@ -393,27 +331,3 @@ class C3BFController(BaseController):
         self._h_vals.clear()
         self._man = "hold_course"
 
-
-# =====================================================================
-# Manoeuvre labelling  (same as CC-CBF for consistency)
-# =====================================================================
-
-def _label(heading_delta: float, speed_ratio: float) -> str:
-    stbd     = heading_delta < -math.radians(3)
-    big_stbd = heading_delta < -math.radians(12)
-    port     = heading_delta >  math.radians(3)
-    slow     = speed_ratio   <  0.60
-
-    if abs(heading_delta) < math.radians(3) and speed_ratio > 0.90:
-        return "hold_course"
-    if big_stbd:
-        return "early_stbd"
-    if stbd and slow:
-        return "early_stbd"
-    if stbd:
-        return "late_stbd"
-    if slow:
-        return "slow_down"
-    if port:
-        return "emergency_port"
-    return "early_stbd"

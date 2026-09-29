@@ -1,10 +1,11 @@
 """
-Baseline: Turning-Circle CBF (TC-CBF) — Lee et al. (IEEE Access, 2025)
-========================================================================
+Baseline B4: Turning-Circle CBF (TC-CBF) -- Lee et al.
+======================================================
 Implements the core concept of:
 
-    Lee et al., "Turning-Circle Control Barrier Functions for
-    COLREG-Compliant Maritime Collision Avoidance," IEEE Access 2025.
+    C. Lee, J. Park and J. Kim, "Efficient COLREGs-compliant collision
+    avoidance using turning circle-based control barrier function,"
+    Mechatronics, vol. 117, Art. no. 103495, 2026.
 
 Key idea:
     For each obstacle, construct TWO barrier functions — one for a port
@@ -25,8 +26,9 @@ Barrier construction (per obstacle, per turn direction):
 
     where r_safe is the combined safety radius.
 
-    The CBF condition  ḣ >= -α·h  yields a linear constraint in the
-    velocity control input, solved via the same QP framework.
+    The CBF condition  dh/dt >= -alpha*h  yields a linear constraint in the
+    velocity control input.  An isotropic distance barrier is added as a
+    backup safety net; the constraints are enforced by cyclic projection.
 
 Key differences from CC-CBF:
     - Uses TWO barriers per obstacle (port + starboard) instead of ONE
@@ -45,13 +47,14 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from algorithms.base_controller import BaseController
+import data.config as cfg
+from algorithms.base_controller import (
+    BaseController, cyclic_projection, manoeuvre_label,
+)
 from core.entities import (
-    ControlCommand, EncounterInfo, ObstacleState, RiskVector,
-    ScenarioConfig, USVParameters, VesselState,
+    ControlCommand, EncounterInfo, ObstacleState, ScenarioConfig, VesselState,
 )
 from core.geometry import wrap_angle
-import data.config as cfg
 
 # =====================================================================
 # TC-CBF parameters
@@ -113,7 +116,7 @@ def _obs_radius(length: float, width: float) -> float:
 
 class TurningCircleCBFController(BaseController):
     """
-    Turning-Circle CBF (Lee et al., IEEE Access 2025).
+    Turning-Circle CBF (Lee et al.).
 
     Constructs port and starboard turning-circle barriers for each
     obstacle.  COLREG switching logic selects which barrier to enforce.
@@ -144,22 +147,13 @@ class TurningCircleCBFController(BaseController):
         r_turn: float, direction: str
     ) -> Tuple[float, float]:
         """
-        Compute the center of the turning circle.
+        Centre of the starboard or port turning circle.
 
-        For starboard turn: center is 90° clockwise from heading
-            c = p + R_turn * [cos(psi - π/2), sin(psi - π/2)]
-              = p + R_turn * [sin(psi), -cos(psi)]    ... wait, that's port
-        Actually:
-            Starboard (right) turn → center to starboard of vessel
-            n_stbd = [sin(psi), -cos(psi)]  ... no, let's be careful.
-
-        Heading psi: vessel points in direction [cos(psi), sin(psi)]
-        Starboard is 90° clockwise: rotate heading by -90°
-            n_stbd = [cos(psi - π/2), sin(psi - π/2)]
-                   = [sin(psi), -cos(psi)]
-        Port is 90° counter-clockwise: rotate heading by +90°
-            n_port = [cos(psi + π/2), sin(psi + π/2)]
-                   = [-sin(psi), cos(psi)]
+        With heading direction [cos(psi), sin(psi)], starboard is the
+        heading rotated by -90 deg and port by +90 deg:
+            n_stbd = [ sin(psi), -cos(psi)]
+            n_port = [-sin(psi),  cos(psi)]
+        and the centre is  c = p + R_turn * n.
         """
         if direction == "stbd":
             # Center to starboard
@@ -212,41 +206,19 @@ class TurningCircleCBFController(BaseController):
         r_turn: float = R_TURN,
     ) -> Tuple[np.ndarray, float, float]:
         """
-        Compute the linear CBF constraint for the turning-circle barrier.
+        Linear CBF constraint for the turning-circle barrier.
 
-        The turning-circle center moves with the ownship:
-            c = p_own + R_turn * n(psi, direction)
+        The circle centre moves with the own ship, c = p_own + R_turn * n,
+        so with d_vec = p_obs - c and u = v_own,
 
-        Time derivative:
-            ḣ = 2(p_obs - c)^T * (v_obs - ċ)
+            dh/dt = 2 d_vec^T (v_obs - u - R_turn * n_dot)
+                  = a^T u + b,
+            a = -2 d_vec,   b = 2 d_vec^T (v_obs - R_turn * n_dot),
 
-        where ċ = v_own + R_turn * ṅ(psi, r)
-        ṅ depends on yaw rate r, which is a state (not control).
+        where n_dot depends on the measured yaw rate (a known bias).
+        The condition dh/dt >= -alpha*h gives a^T u >= -alpha*h - b.
 
-        Under the velocity-controlled abstraction (same as CC-CBF),
-        v_own = u is the control input. The ṅ term (from yaw rate)
-        is treated as a known bias.
-
-        ḣ = 2(p_obs - c)^T * v_obs - 2(p_obs - c)^T * v_own
-            - 2(p_obs - c)^T * R_turn * ṅ
-
-        The constraint ḣ >= -α·h becomes:
-            -2(p_obs - c)^T * u >= -α·h - [2(p_obs - c)^T * v_obs
-                                            - 2(p_obs - c)^T * R_turn * ṅ]
-        i.e.:
-            a^T u >= c_val
-        where a = -2(p_obs - c)  [note the sign: we want to move c away from obs]
-
-        Actually more carefully: let d_vec = p_obs - c.
-            ḣ = d(||d_vec||^2)/dt = 2 d_vec^T * ḋ_vec
-            ḋ_vec = v_obs - ċ = v_obs - (u + R_turn * ṅ)
-
-        So:
-            ḣ = 2 d_vec^T * (v_obs - u - R_turn * ṅ)
-              = -2 d_vec^T * u + 2 d_vec^T * (v_obs - R_turn * ṅ)
-
-        => a = -2 d_vec,  b = 2 d_vec^T * (v_obs - R_turn * ṅ)
-        => constraint: a^T u >= -α h - b
+        Returns ``(a, c, h)``.
         """
         # Turning-circle center
         cx, cy = TurningCircleCBFController._turning_center(
@@ -406,7 +378,7 @@ class TurningCircleCBFController(BaseController):
         return direction
 
     # =================================================================
-    # Analytical QP solver (same as CC-CBF for fair comparison)
+    # QP:  min ||u - u_nom||^2  s.t.  A u >= c, ||u|| <= v_max
     # =================================================================
 
     @staticmethod
@@ -416,41 +388,8 @@ class TurningCircleCBFController(BaseController):
         c_vec: np.ndarray,
         v_max: float,
     ) -> np.ndarray:
-        """
-        Solve:  min ||u - u_nom||^2
-                s.t.  A[i] @ u >= c[i]   for all i
-                      ||u|| <= v_max
-
-        Iterative projection (same as CC-CBF Algorithm 1).
-        """
-        u = u_nom.copy()
-        n = A.shape[0] if A.ndim == 2 else 0
-
-        if n == 0:
-            norm_val = np.linalg.norm(u)
-            if norm_val > v_max:
-                u = u * (v_max / norm_val)
-            return u
-
-        for _iteration in range(20):
-            violated = False
-            for i in range(n):
-                ai = A[i]
-                ci = c_vec[i]
-                margin = ai @ u - ci
-                if margin < 0:
-                    a_norm_sq = ai @ ai
-                    if a_norm_sq > 1e-12:
-                        u = u + (-margin / a_norm_sq) * ai
-                    violated = True
-            if not violated:
-                break
-
-        norm_val = np.linalg.norm(u)
-        if norm_val > v_max:
-            u = u * (v_max / norm_val)
-
-        return u
+        """Cyclic projection (20 sweeps) followed by speed clipping."""
+        return cyclic_projection(u_nom, A, c_vec, v_max, max_iter=20)
 
     # =================================================================
     # Main control loop
@@ -468,11 +407,9 @@ class TurningCircleCBFController(BaseController):
         scenario_config: Optional[ScenarioConfig] = None,
     ) -> ControlCommand:
 
-        self.llm_queried_this_step = False
-
         # Nominal: head toward goal at cruise speed
         nom_heading = self.nominal_heading(state, goal_x, goal_y)
-        nom_speed = cfg.MAX_SPEED_MPS * 0.75
+        nom_speed = cfg.CRUISE_SPEED
 
         if not obstacles:
             self._risk = 0.0
@@ -566,7 +503,7 @@ class TurningCircleCBFController(BaseController):
         # Manoeuvre label
         heading_delta = wrap_angle(des_heading - nom_heading)
         speed_ratio = des_speed / max(nom_speed, 0.01)
-        man = _label(heading_delta, speed_ratio)
+        man = manoeuvre_label(heading_delta, speed_ratio)
         self._man = man
 
         if man == "hold_course":
@@ -585,9 +522,6 @@ class TurningCircleCBFController(BaseController):
     # Interface
     # =================================================================
 
-    def get_risk_vector(self) -> Optional[RiskVector]:
-        return RiskVector(Rg=self._risk)
-
     def get_scalar_risk(self) -> float:
         return self._risk
 
@@ -604,27 +538,3 @@ class TurningCircleCBFController(BaseController):
         self._man = "hold_course"
         self._active_dir.clear()
 
-
-# =====================================================================
-# Manoeuvre labelling (same vocabulary as CC-CBF / metrics.py)
-# =====================================================================
-
-def _label(heading_delta: float, speed_ratio: float) -> str:
-    stbd     = heading_delta < -math.radians(3)
-    big_stbd = heading_delta < -math.radians(12)
-    port     = heading_delta >  math.radians(3)
-    slow     = speed_ratio   <  0.60
-
-    if abs(heading_delta) < math.radians(3) and speed_ratio > 0.90:
-        return "hold_course"
-    if big_stbd:
-        return "early_stbd"
-    if stbd and slow:
-        return "early_stbd"
-    if stbd:
-        return "late_stbd"
-    if slow:
-        return "slow_down"
-    if port:
-        return "emergency_port"
-    return "early_stbd"

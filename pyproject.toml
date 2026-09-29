@@ -1,0 +1,10 @@
+# Tool configuration only: the code runs from the repository root and is not
+# installed as a package.  Install dependencies with
+#   pip install -r requirements.txt            (and requirements-dev.txt for tests)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not slow'"
+markers = [
+    "slow: long-running regression runs (select with: pytest -m slow)",
+]

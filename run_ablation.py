@@ -1,159 +1,223 @@
 #!/usr/bin/env python3
 """
-Component ablation study for CC-CBF paper.
+Component ablation of CC-CBF (paper Table IV and Sec. VI-E).
 
-Eight variants tested across all 3 COLREG scenarios, 40 seeds each:
+Every variant runs on the same paired seeds (default 200 trials per
+scenario, seeds 300-499, sigma_v = 1.0 m/s, sigma_psi = 10 deg) in the three
+COLREG encounters.  Reported per variant: selected CPA-side rate (Side%,
+with Wilson 95 % interval), mean minimum hull clearance (Sep) and collision
+rate (Coll%), plus paired exact McNemar tests on the side outcome.
 
-  1. CC-CBF (Full)                -- all components active (proposed method)
-  2. No direction                 -- THETA_C=0 for all (Layer 2 off)
-  3. No stern-pass                -- STERN_PASS_LAMBDA=0 (Layer 3 off)
-  4. No anticipation              -- GAMMA=0 (anticipatory tightening off)
-  5. C3BF                         -- isotropic baseline (lambda=0 everywhere)
-  6. No direction + No stern-pass -- Layers 2 & 3 both off
-  7. No direction + No anticipation  -- Layer 2 off + anticipation off
-  8. No stern-pass + No anticipation -- Layer 3 off + anticipation off
+Variants (paper rows first):
+  full                              Full CC-CBF
+  no_direction                      theta_C = 0 (lambda retained)
+  no_sternpass                      Rule-15 stern-passage factor off
+  no_anticipation                   gamma = 0
+  no_nominal_shaping                heading bias and stern goal off
+  no_nominal_shaping_no_direction     ... and theta_C = 0
+  no_nominal_shaping_mirrored         ... and theta_C -> -theta_C
+  c3bf                              isotropic collision-cone baseline
+  mirrored                          theta_C -> -theta_C (cited in the text)
+Additional variants: ot_flip, stbd_lobes (and their no_nominal_shaping_*
+forms), no_dir_no_stern, no_dir_no_anticipation, no_stern_no_anticipation.
 
-Metrics: Side% (COLREG side at CPA), Sep (min separation), Coll% (collisions)
+Usage:
+    python run_ablation.py                       # paper configuration
+    python run_ablation.py --trials 40 --variants full no_direction c3bf
+    python run_ablation.py --variants all
+
+Output: results/ablation_trials.csv (per trial), results/ablation_summary.csv
 """
 
-import os, sys, csv, time, math
+import argparse
+import csv
+import math
+import os
+import sys
+import time
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from core.scenario  import get_scenario
-from core.simulator import Simulator
-from core.entities  import USVParameters
-from core.geometry  import wrap_angle
-from algorithms.cc_cbf import CCCBFController, _phi_and_dphi, _obs_rb
-import algorithms.cc_cbf as ccbf_mod
-from algorithms.c3bf import C3BFController
+import algorithms.cc_cbf as ccbf_mod                          # noqa: E402
+from algorithms.c3bf import C3BFController                    # noqa: E402
+from algorithms.cc_cbf import CCCBFController                 # noqa: E402
+from core.entities import USVParameters                       # noqa: E402
+from core.evaluation import (                                 # noqa: E402
+    add_common_args, correct_side, cpa_record, ensure_dir, mcnemar_exact,
+    parallel_map, wilson_ci,
+)
+from core.scenario import COLREG_SCENARIOS, get_scenario      # noqa: E402
+from core.simulator import Simulator                          # noqa: E402
 
-SCENARIOS   = ["head_on", "crossing_give_way", "overtaking"]
-N_TRIALS    = 40
+SCENARIOS = list(COLREG_SCENARIOS)
+N_TRIALS = 200
 SEED_OFFSET = 300
-SPEED_VAR   = 1.0
+SPEED_VAR = 1.0
 HEADING_VAR = math.radians(10)
+# Side%: a collision or a missing goal entry counts as not side-correct
+STRICT_SIDE = True
 
-CSV_OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                       "results_ablation.csv")
+# Barrier-parameter overrides per geometry variant (see algorithms.cc_cbf.overridden)
+_THETA0 = dict(ccbf_mod.THETA_C)
+GEOMETRY_VARIANTS = {
+    "full":                     {},
+    "no_direction":             {"theta_c": {k: 0.0 for k in _THETA0}},
+    "no_sternpass":             {"stern_pass_lambda": 0.0},
+    "no_anticipation":          {"gamma": 0.0},
+    "mirrored":                 {"theta_c": {k: -v for k, v in _THETA0.items()}},
+    # overtaking lobe on the starboard side only
+    "ot_flip":                  {"theta_c": {"overtaking": -_THETA0["overtaking"]}},
+    # crossing give-way and overtaking lobes flipped, head-on / stand-on unchanged
+    "stbd_lobes":               {"theta_c": {k: -_THETA0[k] for k in ("crossing_give_way", "overtaking")}},
+    "no_dir_no_stern":          {"theta_c": {k: 0.0 for k in _THETA0}, "stern_pass_lambda": 0.0},
+    "no_dir_no_anticipation":   {"theta_c": {k: 0.0 for k in _THETA0}, "gamma": 0.0},
+    "no_stern_no_anticipation": {"stern_pass_lambda": 0.0, "gamma": 0.0},
+}
+SHAPING_OFF = "no_nominal_shaping"
 
-_ORIG_LAMBDA       = dict(ccbf_mod.LAMBDA)
-_ORIG_THETA_C      = dict(ccbf_mod.THETA_C)
-_ORIG_GAMMA        = ccbf_mod.GAMMA
-_ORIG_STERN        = ccbf_mod.STERN_PASS_LAMBDA
+VARIANT_LABELS = {
+    "full":                            "Full CC-CBF",
+    "no_direction":                    "No direction",
+    "no_sternpass":                    "No stern-pass",
+    "no_anticipation":                 "No anticipation",
+    "no_nominal_shaping":              "No nominal shaping",
+    "no_nominal_shaping_no_direction": "  + no direction",
+    "no_nominal_shaping_mirrored":     "  + mirrored lobe",
+    "c3bf":                            "C3BF (isotropic)",
+    "mirrored":                        "Mirrored lobe",
+}
+PAPER_VARIANTS = list(VARIANT_LABELS)
+ALL_VARIANTS = (PAPER_VARIANTS
+                + [v for v in GEOMETRY_VARIANTS if v not in PAPER_VARIANTS]
+                + [f"{SHAPING_OFF}_{v}" for v in ("ot_flip", "stbd_lobes")])
 
-def _restore():
-    for k in ccbf_mod.LAMBDA:    ccbf_mod.LAMBDA[k]  = _ORIG_LAMBDA[k]
-    for k in ccbf_mod.THETA_C:   ccbf_mod.THETA_C[k] = _ORIG_THETA_C[k]
-    ccbf_mod.GAMMA             = _ORIG_GAMMA
-    ccbf_mod.STERN_PASS_LAMBDA = _ORIG_STERN
-
-def _correct_side(rec, scn):
-    if rec.state is None or not rec.obstacles: return True
-    own, obs = rec.state, rec.obstacles[0]
-    dx, dy = obs.x - own.x, obs.y - own.y
-    if scn in ("head_on", "overtaking"):
-        return wrap_angle(math.atan2(dy, dx) - own.psi) > 0.0
-    return ((own.x-obs.x)*math.cos(obs.psi) + (own.y-obs.y)*math.sin(obs.psi)) < 0.0
-
-def _run(scn, seed, variant):
-    """Run one trial with the given variant configuration."""
-    try:
-        if variant == "full":
-            pass  # defaults
-        elif variant == "no_direction":
-            for k in ccbf_mod.THETA_C: ccbf_mod.THETA_C[k] = 0.0
-        elif variant == "no_sternpass":
-            ccbf_mod.STERN_PASS_LAMBDA = 0.0
-        elif variant == "no_anticipation":
-            ccbf_mod.GAMMA = 0.0
-        elif variant == "c3bf":
-            pass  # handled below
-        # --- pairwise combinations ---
-        elif variant == "no_dir_no_stern":
-            for k in ccbf_mod.THETA_C: ccbf_mod.THETA_C[k] = 0.0
-            ccbf_mod.STERN_PASS_LAMBDA = 0.0
-        elif variant == "no_dir_no_anticipation":
-            for k in ccbf_mod.THETA_C: ccbf_mod.THETA_C[k] = 0.0
-            ccbf_mod.GAMMA = 0.0
-        elif variant == "no_stern_no_anticipation":
-            ccbf_mod.STERN_PASS_LAMBDA = 0.0
-            ccbf_mod.GAMMA = 0.0
-
-        sc = get_scenario(scn, seed=seed, speed_var=SPEED_VAR, heading_var=HEADING_VAR)
-        if variant == "c3bf":
-            ctrl = C3BFController()
-        else:
-            ctrl = CCCBFController()
-        sim = Simulator(sc, ctrl, USVParameters())
-        sim.run_to_completion()
-        m   = sim.get_metrics()
-        cpa = min(sim.records, key=lambda r: r.min_distance)
-        side = _correct_side(cpa, scn)
-        commit = m.manoeuvre_commit_time if m.manoeuvre_commit_time < 1e6 else 0.0
-        return dict(sep=m.min_separation, side=int(side),
-                    commit=commit, coll=int(m.collision_flag))
-    finally:
-        _restore()
-
-def _agg(rs):
-    n = len(rs)
-    return dict(
-        sep      = round(sum(r["sep"]  for r in rs)/n, 2),
-        side_pct = round(100*sum(r["side"] for r in rs)/n, 1),
-        commit   = round(sum(r["commit"] for r in rs)/n, 1),
-        coll_pct = round(100*sum(r["coll"] for r in rs)/n, 1),
-    )
-
-VARIANTS = [
-    ("full",                     "CC-CBF (Full)"),
-    ("no_direction",             "No direction (THETA\\_C=0)"),
-    ("no_sternpass",             "No stern-pass"),
-    ("no_anticipation",          "No anticipation (GAMMA=0)"),
-    ("c3bf",                     "C3BF (isotropic)"),
-    ("no_dir_no_stern",          "No dir + No stern"),
-    ("no_dir_no_anticipation",   "No dir + No anticipation"),
-    ("no_stern_no_anticipation", "No stern + No anticipation"),
+# Paired McNemar comparisons reported in the paper text
+COMPARISONS = [
+    ("full", "no_direction"), ("full", "no_sternpass"), ("full", "no_anticipation"),
+    ("full", "no_nominal_shaping"), ("full", "mirrored"), ("full", "c3bf"),
+    ("no_nominal_shaping", "no_nominal_shaping_no_direction"),
+    ("no_nominal_shaping", "no_nominal_shaping_mirrored"),
+    ("no_nominal_shaping_no_direction", "no_nominal_shaping_mirrored"),
 ]
 
+
+def parse_variant(variant):
+    """Return (controller kind, barrier overrides, controller kwargs)."""
+    if variant == "c3bf":
+        return "c3bf", {}, {}
+    kwargs = {}
+    geometry = variant
+    if variant == SHAPING_OFF or variant.startswith(SHAPING_OFF + "_"):
+        # Layer-2 heading bias and Layer-3 stern reference goal disabled;
+        # the barrier geometry and the tightening are retained.
+        kwargs = dict(use_heading_bias=False, use_goal_shaping=False)
+        geometry = variant[len(SHAPING_OFF) + 1:] or "full"
+    if geometry not in GEOMETRY_VARIANTS:
+        raise ValueError(f"unknown ablation variant: {variant}")
+    return "cc", GEOMETRY_VARIANTS[geometry], kwargs
+
+
+def run_trial(scn, seed, variant):
+    """Run one trial of *variant*; returns dict(sep, side, commit, coll)."""
+    kind, overrides, kwargs = parse_variant(variant)
+    with ccbf_mod.overridden(**overrides):
+        sc = get_scenario(scn, seed=seed, speed_var=SPEED_VAR, heading_var=HEADING_VAR)
+        ctrl = C3BFController() if kind == "c3bf" else CCCBFController(**kwargs)
+        sim = Simulator(sc, ctrl, USVParameters())
+        sim.run_to_completion()
+    m = sim.get_metrics()
+    side = correct_side(cpa_record(sim.records), scn) and (
+        not STRICT_SIDE or (not m.collision_flag and sim.reached_goal))
+    commit = m.manoeuvre_commit_time if m.manoeuvre_commit_time < 1e6 else 0.0
+    return dict(sep=m.min_separation, side=int(side), commit=commit,
+                coll=int(m.collision_flag))
+
+
+# Backwards-compatible name
+_run = run_trial
+
+
+def _job(job):
+    scn, seed, variant = job
+    return dict(scenario=scn, variant=variant, seed=seed, **run_trial(scn, seed, variant))
+
+
+def summarise(rows, scenarios, variants):
+    """Print the ablation table and McNemar tests; return summary rows."""
+    summary = []
+    for scn in scenarios:
+        print(f"\n{'=' * 84}\n  {scn}\n{'=' * 84}")
+        print(f"  {'Variant':<34}{'Side%':>7}  {'95% CI':>13}  {'Sep (m)':>8}  "
+              f"{'min Sep':>8}  {'Coll%':>6}")
+        res = {}
+        for v in variants:
+            rs = [r for r in rows if r["scenario"] == scn and r["variant"] == v]
+            if not rs:
+                continue
+            res[v] = rs
+            n, k = len(rs), sum(r["side"] for r in rs)
+            lo, hi = wilson_ci(k, n)
+            s = dict(scenario=scn, variant=v, n=n, side_pct=round(100 * k / n, 1),
+                     side_ci_lo=round(lo, 1), side_ci_hi=round(hi, 1),
+                     sep=round(sum(r["sep"] for r in rs) / n, 2),
+                     min_sep=round(min(r["sep"] for r in rs), 2),
+                     coll_pct=round(100 * sum(r["coll"] for r in rs) / n, 1),
+                     commit=round(sum(r["commit"] for r in rs) / n, 1))
+            summary.append(s)
+            print(f"  {VARIANT_LABELS.get(v, v):<34}{s['side_pct']:>6.1f}%  "
+                  f"[{lo:5.1f},{hi:5.1f}]  {s['sep']:>8.2f}  {s['min_sep']:>8.2f}  "
+                  f"{s['coll_pct']:>5.1f}%")
+        pairs = [(a, b) for a, b in COMPARISONS if a in res and b in res]
+        if pairs:
+            print("  Paired exact McNemar tests on the side outcome (a-only / b-only):")
+        for a, b in pairs:
+            ra = {r["seed"]: r["side"] for r in res[a]}
+            rb = {r["seed"]: r["side"] for r in res[b]}
+            common = sorted(set(ra) & set(rb))
+            n_ab = sum(1 for s in common if ra[s] and not rb[s])
+            n_ba = sum(1 for s in common if rb[s] and not ra[s])
+            print(f"    {a} vs {b}: {n_ab}/{n_ba}  p = {mcnemar_exact(n_ab, n_ba):.2g}")
+    return summary
+
+
 def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0],
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--trials", type=int, default=N_TRIALS,
+                    help=f"paired trials per scenario and variant (default: {N_TRIALS})")
+    ap.add_argument("--seed0", type=int, default=SEED_OFFSET,
+                    help=f"first seed (default: {SEED_OFFSET})")
+    ap.add_argument("--variants", nargs="+", default=PAPER_VARIANTS,
+                    help="variants to run, or 'all' (default: the paper's Table IV rows)")
+    ap.add_argument("--scenarios", nargs="+", choices=SCENARIOS, default=SCENARIOS)
+    add_common_args(ap)
+    args = ap.parse_args()
+
+    variants = ALL_VARIANTS if args.variants == ["all"] else args.variants
+    for v in variants:
+        parse_variant(v)   # fail fast on typos
+    jobs = [(s, args.seed0 + i, v) for s in args.scenarios for v in variants
+            for i in range(args.trials)]
+    print(f"CC-CBF ablation: {len(args.scenarios)} scenarios x {len(variants)} variants x "
+          f"{args.trials} trials = {len(jobs)} runs  (speed_var={SPEED_VAR} m/s, "
+          f"heading_var={math.degrees(HEADING_VAR):.0f} deg)")
+
     t0 = time.time()
-    total = len(SCENARIOS) * len(VARIANTS) * N_TRIALS
-    done  = 0
+    rows = parallel_map(_job, jobs, args.workers, chunksize=4)
+    print(f"Simulations finished in {time.time() - t0:.0f} s")
 
-    print("CC-CBF Component Ablation Study")
-    print(f"  Scenarios={len(SCENARIOS)}  Variants={len(VARIANTS)}  N={N_TRIALS}  Total={total} runs")
-    print(f"  speed_var={SPEED_VAR}m/s  heading_var=10deg\n")
+    summary = summarise(rows, args.scenarios, variants)
 
-    hdr = f"  {'Variant':<30}{'Sep(m)':>7}  {'Side%':>6}  {'Coll%':>6}  {'Commit':>7}"
-    rows = []
+    out = ensure_dir(args.out_dir)
+    for name, data in (("ablation_trials.csv", rows), ("ablation_summary.csv", summary)):
+        with open(os.path.join(out, name), "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=list(data[0]))
+            w.writeheader()
+            w.writerows(data)
+    print(f"\nCSV -> {os.path.join(out, 'ablation_trials.csv')}, "
+          f"{os.path.join(out, 'ablation_summary.csv')}")
+    return 0
 
-    for scn in SCENARIOS:
-        print(f"{'='*65}")
-        print(f"  Scenario: {scn}")
-        print(f"{'='*65}")
-        print(hdr)
-        print("  " + "-"*58)
-
-        for vkey, vlabel in VARIANTS:
-            rs = [_run(scn, SEED_OFFSET+i, vkey) for i in range(N_TRIALS)]
-            done += N_TRIALS
-            a = _agg(rs)
-            elapsed = time.time()-t0
-            eta = elapsed/done*(total-done)
-            print(f"  {vlabel:<30}{a['sep']:>7.2f}  {a['side_pct']:>5.1f}%  "
-                  f"{a['coll_pct']:>5.1f}%  {a['commit']:>7.1f}s"
-                  f"   ({elapsed:.0f}s ~{eta:.0f}s left)")
-            rows.append(dict(scenario=scn, variant=vlabel, **a))
-        print()
-
-    # Write CSV
-    with open(CSV_OUT, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["scenario","variant","sep",
-                                          "side_pct","coll_pct","commit"])
-        w.writeheader()
-        for r in rows: w.writerow(r)
-
-    print(f"Done. CSV -> {CSV_OUT}  (wall-time {time.time()-t0:.0f}s)")
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

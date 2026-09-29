@@ -1,0 +1,3 @@
+# Test dependencies (scipy is only used to cross-check the statistics helpers)
+pytest>=7.0
+scipy>=1.7

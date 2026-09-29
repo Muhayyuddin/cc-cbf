@@ -1,25 +1,25 @@
 """
-Main simulation engine.
+Simulation engine.
 
-Runs a single scenario with a given algorithm, stepping the MBZIRC USV
-dynamics and obstacle models, recording all data for analysis.
+Runs one scenario with one controller: LiDAR range gating, COLREG encounter
+classification, the controller's high-level command, the shared autopilot,
+the MBZIRC USV dynamics and constant-velocity targets, with every step
+recorded for the metrics.
 """
 
 import math
-import copy
-from typing import List, Optional, Dict
-from core.entities import (
-    USVParameters, VesselState, ObstacleState, ControlCommand,
-    ThrusterCommand, StepRecord, SimulationMetrics, ScenarioConfig,
-    RiskVector, EncounterInfo
-)
-from core.usv_model import USVModel
+from typing import List, Optional
+
+import data.config as cfg
+from algorithms.base_controller import BaseController
 from core.autopilot import Autopilot
 from core.colregs import classify_encounter
-from core.geometry import center_distance, min_distance_rects, rect_overlap
+from core.entities import (
+    USVParameters, StepRecord, SimulationMetrics, ScenarioConfig,
+)
+from core.geometry import center_distance, min_distance_rects
 from core.metrics import compute_metrics
-from algorithms.base_controller import BaseController
-import data.config as cfg
+from core.usv_model import USVModel
 
 
 class Simulator:
@@ -35,7 +35,7 @@ class Simulator:
     """
 
     def __init__(self, scenario: ScenarioConfig, controller: BaseController,
-                 params: USVParameters = None):
+                 params: Optional[USVParameters] = None):
         self.scenario = scenario
         self.controller = controller
         self.params = params or USVParameters()
@@ -63,7 +63,7 @@ class Simulator:
         self.controller.reset()
         self.autopilot.reset()
 
-    def step(self, dt: float = None) -> StepRecord:
+    def step(self, dt: Optional[float] = None) -> StepRecord:
         """
         Advance simulation by one time step.
 
@@ -85,11 +85,10 @@ class Simulator:
             if d <= cfg.LIDAR_RANGE:
                 detected_obstacles.append(obs)
 
-        # 2. Classify encounters (only for detected obstacles)
-        encounters = []
-        for obs in detected_obstacles:
-            enc = classify_encounter(self.state, obs)
-            encounters.append(enc)
+        # 2. Classify encounters (memoryless classifier; shared by every
+        #    controller and by the compliance metric)
+        encounters = [classify_encounter(self.state, obs)
+                      for obs in detected_obstacles]
 
         # 3. Compute minimum distance (rectangle-aware, ALL obstacles for metrics)
         min_dist = float('inf')
@@ -129,11 +128,8 @@ class Simulator:
                 obs.x += obs.speed * math.cos(obs.psi) * dt
                 obs.y += obs.speed * math.sin(obs.psi) * dt
 
-        # 8. Record
-        risk_vec = self.controller.get_risk_vector()
-        scalar_risk = self.controller.get_scalar_risk()
-
-        # Get the closest encounter for the record
+        # 8. Record (the closest detected target's encounter is the one
+        #    scored by the compliance metric)
         closest_enc = None
         if encounters:
             closest_enc = min(encounters, key=lambda e: e.distance)
@@ -142,14 +138,12 @@ class Simulator:
             time=self.time,
             state=self.state.copy(),
             obstacles=[o.copy() for o in self.obstacles],
-            risk=risk_vec,
-            scalar_risk=scalar_risk,
+            scalar_risk=self.controller.get_scalar_risk(),
             encounter=closest_enc,
             encounters=list(encounters),
             command=cmd,
             thruster=thrust,
             min_distance=min_dist,
-            llm_queried=self.controller.llm_queried_this_step,
             collision=has_collision,
         )
         self.records.append(record)
@@ -163,20 +157,27 @@ class Simulator:
             self.state.x, self.state.y,
             self.scenario.ownship_goal_x, self.scenario.ownship_goal_y
         )
-        if dist_to_goal < 10.0:
+        if dist_to_goal < cfg.GOAL_RADIUS:
             self.finished = True
         if self.time > cfg.SIM_DURATION:
             self.finished = True
 
         return record
 
-    def run_to_completion(self, dt: float = None) -> List[StepRecord]:
-        """Run simulation until finished."""
+    def run_to_completion(self, dt: Optional[float] = None) -> List[StepRecord]:
+        """Run until the goal disc is reached or SIM_DURATION elapses."""
         if dt is None:
             dt = cfg.SIM_DT
         while not self.finished:
             self.step(dt)
         return self.records
+
+    @property
+    def reached_goal(self) -> bool:
+        """True if the USV is inside the goal disc."""
+        return center_distance(self.state.x, self.state.y,
+                               self.scenario.ownship_goal_x,
+                               self.scenario.ownship_goal_y) < cfg.GOAL_RADIUS
 
     def get_metrics(self) -> SimulationMetrics:
         """Compute metrics for the completed simulation."""
@@ -189,6 +190,7 @@ class Simulator:
             self.controller.name,
             self.scenario.name,
             nominal_dist,
+            goal=(self.scenario.ownship_goal_x, self.scenario.ownship_goal_y),
         )
 
 
@@ -199,7 +201,7 @@ class MultiSimulator:
 
     def __init__(self, scenario: ScenarioConfig,
                  controllers: List[BaseController],
-                 params: USVParameters = None):
+                 params: Optional[USVParameters] = None):
         self.scenario = scenario
         self.controllers = controllers
         self.params = params or USVParameters()
@@ -214,7 +216,7 @@ class MultiSimulator:
         for sim in self.simulators:
             sim.reset()
 
-    def step_all(self, dt: float = None) -> List[StepRecord]:
+    def step_all(self, dt: Optional[float] = None) -> List[StepRecord]:
         """Step all simulators by one time step."""
         records = []
         for sim in self.simulators:
@@ -226,7 +228,7 @@ class MultiSimulator:
     def all_finished(self) -> bool:
         return all(sim.finished for sim in self.simulators)
 
-    def run_all_to_completion(self, dt: float = None):
+    def run_all_to_completion(self, dt: Optional[float] = None):
         """Run all simulators to completion."""
         if dt is None:
             dt = cfg.SIM_DT

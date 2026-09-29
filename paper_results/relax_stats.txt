@@ -1,0 +1,9 @@
+('abl', 'crossing_give_way') {'runs': 200, 'steps': 211349, 'full': 211136, 'scaled': 213, 'infeas': 0, 'hneg': 0, 'runs_scaled': 15, 'runs_infeas': 0, 'runs_hneg': 0}
+('abl', 'head_on') {'runs': 200, 'steps': 147485, 'full': 147483, 'scaled': 2, 'infeas': 0, 'hneg': 8, 'runs_scaled': 1, 'runs_infeas': 0, 'runs_hneg': 1}
+('abl', 'overtaking') {'runs': 200, 'steps': 280346, 'full': 280207, 'scaled': 139, 'infeas': 0, 'hneg': 187, 'runs_scaled': 11, 'runs_infeas': 0, 'runs_hneg': 12}
+('mc', 'crossing_give_way') {'runs': 50, 'steps': 53326, 'full': 53326, 'scaled': 0, 'infeas': 0, 'hneg': 0, 'runs_scaled': 0, 'runs_infeas': 0, 'runs_hneg': 0}
+('mc', 'head_on') {'runs': 50, 'steps': 38804, 'full': 38804, 'scaled': 0, 'infeas': 0, 'hneg': 0, 'runs_scaled': 0, 'runs_infeas': 0, 'runs_hneg': 0}
+('mc', 'overtaking') {'runs': 50, 'steps': 64618, 'full': 64618, 'scaled': 0, 'infeas': 0, 'hneg': 0, 'runs_scaled': 0, 'runs_infeas': 0, 'runs_hneg': 0}
+('mc', 'static_obstacles') {'runs': 50, 'steps': 108933, 'full': 107919, 'scaled': 1014, 'infeas': 0, 'hneg': 48, 'runs_scaled': 20, 'runs_infeas': 0, 'runs_hneg': 3}
+ALL {'runs': 800, 'steps': 904861, 'full': 903493, 'scaled': 1368, 'infeas': 0, 'hneg': 243, 'runs_scaled': 47, 'runs_infeas': 0, 'runs_hneg': 16}
+[222s]
