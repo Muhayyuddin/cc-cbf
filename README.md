@@ -9,41 +9,6 @@
 > Muhayy Ud Din, Waseem Akram, Ahsan Baidar Bakht, Taha Tarek, Irfan Hussain<br>
 > *Submitted to IEEE Transactions on Control Systems Technology (TCST), 2026*
 
-This repository contains the CC-CBF controller, the four baseline controllers, the simulator and the scripts that reproduce every table and simulation figure in the paper.
-
-<p align="center">
-  <img src="assets/figures/graphical_abstract.png" width="620" alt="CC-CBF under COLREG Rules 13 and 14">
-</p>
-
----
-
-## Overview
-
-Two vessels approaching each other must avoid a collision, and the maritime collision regulations (COLREGs) also specify *how* each vessel must manoeuvre. In a head-on encounter both vessels turn to **starboard** and pass port to port (Rule 14). A give-way vessel in a crossing situation must not cross ahead of the other vessel (Rule 15). Conventional control barrier functions (CBFs) guarantee separation but are isotropic, so they cannot tell a lawful passing side from an unlawful one.
-
-**CC-CBF makes the safety region directionally asymmetric.** For each target vessel, a single barrier
-
-```
-h_CC = ||p_o − p_t||² − R_CC(θ, τ)²,     R_CC = R_b · [1 + λ(τ) · Φ(θ, τ)],     Φ = [cos(θ − θ_C(τ))]₊²
-```
-
-enlarges the safety radius toward a lobe centre `θ_C` that depends on the encounter type `τ`. The lobe pushes the target's relative bearing away from the prohibited side. The CBF condition is affine in the commanded velocity, so a small quadratic program (QP) runs at 20 Hz and keeps the velocity inside the safe set. Two layers of nominal guidance choose the passing route:
-
-* a starboard heading bias for head-on and overtaking encounters;
-* a stern reference goal for crossing give-way encounters.
-
-An anticipatory margin tightens the constraint as closing speed increases. The barrier certifies safety and the nominal layer selects the route, so the two work together (paper Sec. VII).
-
-### Key features
-
-- **One barrier per target** for every encounter type: the COLREG direction is encoded in `λ(τ)` and `θ_C(τ)`.
-- **C¹ directional lobe** `Φ = [cos(θ − θ_C)]₊²`, plus a Rule-15 **stern-passage factor** that inflates the barrier ahead of a crossing target's bow.
-- **Exact planar QP.** The decision variable is 2-D, so the QP is solved exactly by enumerating the O(n²) candidate active sets. When the problem is infeasible, the solver applies a documented constraint priority (paper Algorithm 1).
-- **Real-time:** a mean of **24 µs** per control update on one CPU core, the lowest of all tested controllers.
-- **Classification hysteresis** (2° dead-band) and give-way persistence until the closest point of approach (CPA), with a proven reset condition across changes of encounter type.
-
----
-
 ## Scenario demonstrations
 
 ### Head-on (COLREG Rule 14): both vessels alter course to starboard
@@ -88,6 +53,41 @@ Click a preview to open the full video.
 | **Sea trials** | [![Sea trial head-on](assets/videos/sea_trial_head_on_preview.gif)](assets/videos/sea_trial_head_on.mp4) | [![Sea trial overtaking](assets/videos/sea_trial_overtaking_preview.gif)](assets/videos/sea_trial_overtaking.mp4) |
 
 All 12 sea trials in the paper were collision-free, with a minimum hull clearance of 11.4 m.
+
+---
+
+This repository contains the CC-CBF controller, the four baseline controllers, the simulator and the scripts that reproduce every table and simulation figure in the paper.
+
+<p align="center">
+  <img src="assets/figures/graphical_abstract.png" width="620" alt="CC-CBF under COLREG Rules 13 and 14">
+</p>
+
+---
+
+## Overview
+
+Two vessels approaching each other must avoid a collision, and the maritime collision regulations (COLREGs) also specify *how* each vessel must manoeuvre. In a head-on encounter both vessels turn to **starboard** and pass port to port (Rule 14). A give-way vessel in a crossing situation must not cross ahead of the other vessel (Rule 15). Conventional control barrier functions (CBFs) guarantee separation but are isotropic, so they cannot tell a lawful passing side from an unlawful one.
+
+**CC-CBF makes the safety region directionally asymmetric.** For each target vessel, a single barrier
+
+```
+h_CC = ||p_o − p_t||² − R_CC(θ, τ)²,     R_CC = R_b · [1 + λ(τ) · Φ(θ, τ)],     Φ = [cos(θ − θ_C(τ))]₊²
+```
+
+enlarges the safety radius toward a lobe centre `θ_C` that depends on the encounter type `τ`. The lobe pushes the target's relative bearing away from the prohibited side. The CBF condition is affine in the commanded velocity, so a small quadratic program (QP) runs at 20 Hz and keeps the velocity inside the safe set. Two layers of nominal guidance choose the passing route:
+
+* a starboard heading bias for head-on and overtaking encounters;
+* a stern reference goal for crossing give-way encounters.
+
+An anticipatory margin tightens the constraint as closing speed increases. The barrier certifies safety and the nominal layer selects the route, so the two work together (paper Sec. VII).
+
+### Key features
+
+- **One barrier per target** for every encounter type: the COLREG direction is encoded in `λ(τ)` and `θ_C(τ)`.
+- **C¹ directional lobe** `Φ = [cos(θ − θ_C)]₊²`, plus a Rule-15 **stern-passage factor** that inflates the barrier ahead of a crossing target's bow.
+- **Exact planar QP.** The decision variable is 2-D, so the QP is solved exactly by enumerating the O(n²) candidate active sets. When the problem is infeasible, the solver applies a documented constraint priority (paper Algorithm 1).
+- **Real-time:** a mean of **24 µs** per control update on one CPU core, the lowest of all tested controllers.
+- **Classification hysteresis** (2° dead-band) and give-way persistence until the closest point of approach (CPA), with a proven reset condition across changes of encounter type.
 
 ---
 
